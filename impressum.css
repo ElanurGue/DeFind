@@ -1,0 +1,49 @@
+.impressum-container {
+    width: 90%;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px #0e6127;
+    text-align: center;
+   
+}
+
+.impressum-container h1 {
+    color: black;
+    display: inline-block;   
+    margin: 2rem auto 1.5rem;
+    background-color: #0e6127D7;
+    padding: 0.6rem 1.2rem;
+    border-radius: 40px;
+    min-width: 260px;   
+    max-width: 90%;
+}
+
+.impressum-content {
+    line-height: 1.8;
+    text-align: center;
+    padding: 0 20px;
+
+}
+
+
+.links {
+    margin: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.links a {
+    color: #227de4;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.3s;
+}
+
+.links a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
