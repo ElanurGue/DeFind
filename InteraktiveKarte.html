@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktive Karte</title>
+
+    <link rel="stylesheet" href="impressum.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
+</head>
+
+<body>
+
+<header>
+    <div class="logo-container">
+        <img src="Logo_DF.png" alt="SweatQuest Logo" class="logo">
+    </div>
+    <nav>
+        <ul>
+            <li><a href="interaktive Karte.html">Standorte</a></li>
+            <li><a href="Info.html">Info</a></li>
+            <li><a href="Bedienungsanleitung.html">Bedienungsanleitung</a></li>
+            <li><a href="Impressum.html" class="login-btn">Impressum/DSGVO</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Karte -->
+<div id="map" style="height: 500px; width: 100%;"></div>
+
+<!-- Deine JS-Datei -->
+<script src="interaktive Karte.js"></script>
+
+<!-- Button für Live Standort -->
+<button id="find-me">Show my location</button><br />
+<p id="status"></p>
+<a id="map-link" href="" target="_blank">Location unknown</a>
+
+</body>
+</html>
+ 
