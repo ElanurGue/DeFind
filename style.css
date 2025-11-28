@@ -146,6 +146,23 @@ nav a.active {
                 padding: 15px;
             }
 
+             .page-header h1 {
+                font-size: 2em;
+            }
+
+            .step-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .step-title {
+                font-size: 1.2em;
+            }
+
+            .summary-steps {
+                grid-template-columns: 1fr;
+            }
+
         }
 
          
