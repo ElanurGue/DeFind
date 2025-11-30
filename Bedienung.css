@@ -92,36 +92,28 @@
 
         .step-content {
     padding: 25px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 
 .step-image {
     width: 100%;
-    max-width: 800px; /* Größer für bessere Sichtbarkeit */
-    height: auto; /* Automatische Höhe für korrektes Seitenverhältnis */
-    margin: 0 auto 20px auto; /* Zentriert mit Abstand nach unten */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 8px;
+    max-width: 600px;  /* Begrenzt die Bildbreite */
+    margin: 20px auto;  /* Zentriert horizontal */
+    text-align: center;
 }
 
 .step-image img {
     width: 100%;
-    height: 100%;
-    object-fit: contain; /* Bild wird vollständig angezeigt */
+    height: auto;
     display: block;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .step-description {
     color: #555;
     line-height: 1.8;
-    margin-bottom: 15px;
-    text-align: center; /* Text zentriert */
-    max-width: 800px; /* Begrenzt die Textbreite */
+    margin: 20px 0 15px 0;
+    text-align: left;
 }
 
         .step-details {
