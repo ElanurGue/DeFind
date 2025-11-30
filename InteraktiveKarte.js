@@ -30,31 +30,45 @@ defis.forEach(d => {
 
 // Aktuellen Standort anzeigen
 function geoFindMe() {
-  const status = document.querySelector("#status");
-  const mapLink = document.querySelector("#map-link");
-
-  mapLink.href = "";
-  mapLink.textContent = "";
+  if (!navigator.geolocation) {
+    alert("Geolocation wird von Ihrem Browser nicht unterstützt");
+    return;
+  }
 
   function success(position) {
-    const latitude = position.coords.latitude;
-    const longitude = position.coords.longitude;
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
 
-    status.textContent = "";
-    mapLink.href = `https://www.openstreetmap.org/#map=18/${latitude}/${longitude}`;
-    mapLink.textContent = `Latitude: ${latitude} °, Longitude: ${longitude} °`;
+    // Blauen Marker für aktuellen Standort erstellen
+    const userIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -28]
+    });
+
+    // Marker hinzufügen
+    L.marker([lat, lng], { icon: userIcon })
+      .addTo(map)
+      .bindPopup(`<b>Ihr Standort</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
+      .openPopup();
+
+    // Karte auf Standort zentrieren
+    map.setView([lat, lng], 16);
+
+    // Optional: Nächsten Defi finden
+    findNearestDefi(lat, lng);
   }
 
   function error() {
-    status.textContent = "Unable to retrieve your location";
+    alert("Standort konnte nicht ermittelt werden. Bitte erlauben Sie den Zugriff auf Ihren Standort.");
   }
 
-  if (!navigator.geolocation) {
-    status.textContent = "Geolocation is not supported by your browser";
-  } else {
-    status.textContent = "Locating…";
-    navigator.geolocation.getCurrentPosition(success, error);
-  }
+  navigator.geolocation.getCurrentPosition(success, error);
 }
 
-document.querySelector("#find-me").addEventListener("click", geoFindMe);
+// Button-Event (falls Button existiert)
+const findMeBtn = document.getElementById("find-me");
+if (findMeBtn) {
+  findMeBtn.addEventListener("click", geoFindMe);
+}
