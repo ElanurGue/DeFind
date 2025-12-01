@@ -97,7 +97,7 @@
         .step-image {
             width: 100%;
             max-width: 500px;
-            height: 300px;
+            height: auto;
             background: #e8f5e9;
             border-radius: 8px;
             margin: 20px auto;
@@ -107,6 +107,13 @@
             color: #0e6127;
             font-size: 1.1em;
             border: 2px dashed #0e6127;
+        }
+
+        .step-image img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
         }
 
         .step-description {
