@@ -15,6 +15,7 @@ const heartIcon = L.icon({
 });
 
 // Defi-Daten
+// mit Datenbank verknüpfen
 const defis = [
   { name: "DEFI 1", lat: 48.1935, lng: 16.3501, address: "Pilgramgasse 22, 1050 Wien" },
   { name: "DEFI 2", lat: 48.1902, lng: 16.3578, address: "Reinprechtsdorfer Straße 12, 1050 Wien" },
@@ -28,8 +29,18 @@ defis.forEach(d => {
     .bindPopup(`<b>${d.name}</b><br>${d.address}`);
 });
 
+// Variable für User-Marker
+let userMarker = null;
+
 // Aktuellen Standort anzeigen
 function geoFindMe() {
+  // Bestätigungsmeldung
+  const userConfirmed = confirm("Möchten Sie Ihren Standort wirklich teilen?");
+  
+  if (!userConfirmed) {
+    return; // Abbrechen, wenn Benutzer "Nein" klickt
+  }
+
   if (!navigator.geolocation) {
     alert("Geolocation wird von Ihrem Browser nicht unterstützt");
     return;
@@ -39,25 +50,31 @@ function geoFindMe() {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
 
-    // Blauen Marker für aktuellen Standort erstellen
-    const userIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -28]
-    });
+    // Alten Marker entfernen, falls vorhanden
+    if (userMarker) {
+      map.removeLayer(userMarker);
+    }
 
-    // Marker hinzufügen
-    L.marker([lat, lng], { icon: userIcon })
-      .addTo(map)
-      .bindPopup(`<b>Ihr Standort</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
-      .openPopup();
+    // Blauen Punkt für aktuellen Standort erstellen
+    userMarker = L.circleMarker([lat, lng], {
+      radius: 10,
+      fillColor: "#0066ff",
+      color: "#ffffff",
+      weight: 3,
+      opacity: 1,
+      fillOpacity: 0.8
+    })
+    .addTo(map)
+    .bindPopup(`<b>Ihr Standort</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
+    .openPopup();
 
     // Karte auf Standort zentrieren
     map.setView([lat, lng], 16);
 
     // Optional: Nächsten Defi finden
-    findNearestDefi(lat, lng);
+    if (typeof findNearestDefi === 'function') {
+      findNearestDefi(lat, lng);
+    }
   }
 
   function error() {
@@ -67,8 +84,13 @@ function geoFindMe() {
   navigator.geolocation.getCurrentPosition(success, error);
 }
 
-// Button-Event (falls Button existiert)
-const findMeBtn = document.getElementById("find-me");
-if (findMeBtn) {
-  findMeBtn.addEventListener("click", geoFindMe);
-}
+// Button-Event 
+document.addEventListener('DOMContentLoaded', function() {
+  const findMeBtn = document.getElementById('find-me');
+  if (findMeBtn) {
+    findMeBtn.addEventListener('click', geoFindMe);
+    console.log('Button-Event erfolgreich hinzugefügt');
+  } else {
+    console.error('Button nicht gefunden!');
+  }
+});
