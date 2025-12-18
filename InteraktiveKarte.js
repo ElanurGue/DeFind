@@ -15,6 +15,7 @@ const heartIcon = L.icon({
 });
 
 // Defi-Daten
+// mit Datenbank verknüpfen
 const defis = [
   { name: "DEFI 1", lat: 48.1935, lng: 16.3501, address: "Pilgramgasse 22, 1050 Wien" },
   { name: "DEFI 2", lat: 48.1902, lng: 16.3578, address: "Reinprechtsdorfer Straße 12, 1050 Wien" },
@@ -67,8 +68,13 @@ function geoFindMe() {
   navigator.geolocation.getCurrentPosition(success, error);
 }
 
-// Button-Event (falls Button existiert)
-const findMeBtn = document.getElementById("find-me");
-if (findMeBtn) {
-  findMeBtn.addEventListener("click", geoFindMe);
-}
+// Button-Event 
+document.addEventListener('DOMContentLoaded', function() {
+  const findMeBtn = document.getElementById('find-me');
+      if (findMeBtn) {
+        findMeBtn.addEventListener('click', geoFindMe);
+        console.log('Button-Event erfolgreich hinzugefügt');
+      } else {
+        console.error('Button nicht gefunden!');
+      }
+});
