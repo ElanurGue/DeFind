@@ -1,30 +1,34 @@
 const express = require('express');
 const mysql = require('mysql');
 const path = require('path');
+const cors = require('cors');
+
 const app = express();
 const port = 3000;
+
+app.use(cors({ origin: 'http://127.0.0.1:5500' }));
 
 // MySQL Verbindung erstellen
 const db = mysql.createConnection({
     host: 'localhost',
-    user: 'root',  
-    password: '',   
+    user: 'root',
+    password: '',
     database: 'defidb'
 });
 
-// Verbindung zur Datenbank herstellen
-db.connect((err) => {
+// ✅ NUR EINMAL verbinden
+db.connect(err => {
     if (err) {
         console.error('Fehler bei der Verbindung zur Datenbank:', err);
         return;
     }
-    console.log('Verbunden mit MySQL-Datenbank');
+    console.log('Datenbank verbunden!');
 });
 
-// Statische Dateien (HTML, CSS, JS, Bilder)
+// Statische Dateien
 app.use(express.static(path.join(__dirname)));
 
-// API-Endpoint für Standorte
+// API-Endpoint
 app.get('/api/standorte', (req, res) => {
     const query = `
         SELECT 
@@ -43,15 +47,13 @@ app.get('/api/standorte', (req, res) => {
         WHERE z.z_aktiv = 1
         ORDER BY k.k_id
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             console.error('Fehler bei der Datenbankabfrage:', err);
-            res.status(500).json({ error: 'Datenbankfehler' });
-            return;
+            return res.status(500).json({ error: 'Datenbankfehler' });
         }
-        
-        // Formatieren der Daten für die Frontend
+
         const standorte = results.map(row => ({
             id: row.k_id,
             latitude: parseFloat(row.k_latitude),
@@ -65,12 +67,12 @@ app.get('/api/standorte', (req, res) => {
             zusatzinfo: row.z_ort,
             aktiv: Boolean(row.z_aktiv)
         }));
-        
+
         res.json(standorte);
     });
 });
 
-// Starte den Server
+// Server starten
 app.listen(port, () => {
     console.log(`Server läuft auf http://localhost:${port}`);
 });

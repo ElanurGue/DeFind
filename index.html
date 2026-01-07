@@ -13,8 +13,12 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+
     <style>
-        #find-me {
+        #find-me, #find-defi {
             background-color: #0e6127D7; 
             border: none;
             color: white;
@@ -27,6 +31,10 @@
             cursor: pointer;
             border-radius: 8px; 
         }
+        a:hover {
+            color: rgb(7, 89, 7);
+        }
+
     </style>
 </head>
 
@@ -50,7 +58,10 @@
 <div id="map" style="height: 500px; width: 100%;"></div>
 
 <!-- Button für Live Standort -->
-<button id="find-me">Show my location</button><br />
+<button id="find-me">Show my location</button><br/>
+<!-- Button für nächste Defi finden -->
+<button id="find-defi">find next Defi</button>
+
 
 <!-- Deine JS-Datei -->
 <script src="InteraktiveKarte.js"></script>
