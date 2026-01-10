@@ -261,21 +261,7 @@ function geoFindMe() {
                 fillOpacity: 0.9,
                 weight: 3
             }).addTo(map);
-            
-            // ZUERST mit Koordinaten anzeigen
-            currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 220px;">
-                    <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                    <p style="margin: 3px 0; font-size: 13px;">
-                        <strong>Koordinaten:</strong><br>
-                        ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                    </p>
-                    <p style="margin: 3px 0; font-size: 12px; color: #666;">
-                        Genauigkeit: ${Math.round(accuracy)} Meter<br>
-                        <em>Adresse wird ermittelt...</em>
-                    </p>
-                </div>
-            `);
+          
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
@@ -341,9 +327,6 @@ function geoFindMe() {
                         <strong>Standort nicht verfügbar</strong><br>
                         Gezeigter Ort: Wien Zentrum
                     </p>
-                    <p style="margin: 3px 0; font-size: 12px; color: #666;">
-                        Koordinaten: 48.2082, 16.3738
-                    </p>
                 </div>
             `).openPopup();
             
@@ -391,10 +374,6 @@ function getAddressFromCoords(lat, lng, accuracy) {
                 currentUserMarker.setPopupContent(`
                     <div style="font-family: Arial; min-width: 220px;">
                         <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                        <p style="margin: 3px 0; font-size: 13px;">
-                            <strong>Koordinaten:</strong><br>
-                            ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                        </p>
                         <p style="margin: 3px 0; font-size: 12px; color: #666;">
                             Genauigkeit: ${Math.round(accuracy)} Meter<br>
                             <em>Keine Adresse ermittelbar</em>
@@ -469,14 +448,6 @@ function getAddressFromCoords(lat, lng, accuracy) {
                     </div>
                     ` : ''}
                     
-                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">
-                        <strong>Koordinaten:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                    </div>
-                    
-                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">
-                        <strong>Genauigkeit:</strong> ${Math.round(accuracy)} Meter
-                    </div>
-                    
                     <div style="font-size: 11px; color: #888; margin-top: 8px; border-top: 1px solid #eee; padding-top: 5px;">
                         <em>Standort wird aktualisiert...</em>
                     </div>
@@ -495,20 +466,6 @@ function getAddressFromCoords(lat, lng, accuracy) {
         })
         .catch(err => {
             console.log('Adressermittlung fehlgeschlagen:', err);
-            // Bei Fehler trotzdem Koordinaten anzeigen
-            currentUserMarker.setPopupContent(`
-                <div style="font-family: Arial; min-width: 220px;">
-                    <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                    <p style="margin: 3px 0; font-size: 13px;">
-                        <strong>Koordinaten:</strong><br>
-                        ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                    </p>
-                    <p style="margin: 3px 0; font-size: 12px; color: #666;">
-                        Genauigkeit: ${Math.round(accuracy)} Meter<br>
-                        <em>Adresse konnte nicht ermittelt werden</em>
-                    </p>
-                </div>
-            `);
         });
 }
 
