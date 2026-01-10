@@ -190,33 +190,15 @@ function loadFallbackDefis() {
 }
 
 // ===============================
-// Live-Standort (MIT VOLLER ADRESSE)
+// Live-Standort (EINFACHE ADRESSE)
 // ===============================
 function geoFindMe() {
     console.log('📍 Standort-Button geklickt');
     
     // Prüfen ob Browser Geolocation unterstützt
     if (!navigator.geolocation) {
-        alert("Ihr Browser unterstützt keine Standortabfrage. Bitte verwenden Sie einen modernen Browser.");
+        alert("Ihr Browser unterstützt keine Standortabfrage.");
         return;
-    }
-    
-    // HTTPS erforderlich für Geolocation (außer localhost)
-    if (window.location.protocol !== 'https:' && 
-        !window.location.hostname.includes('localhost') &&
-        !window.location.hostname.includes('127.0.0.1')) {
-        
-        const useHttp = confirm(
-            "Standortzugriff benötigt HTTPS für volle Funktionalität.\n\n" +
-            "Möchten Sie zu HTTPS wechseln?\n" +
-            "✓ Klicken Sie OK für HTTPS (empfohlen)\n" +
-            "✗ Klicken Sie Abbrechen um mit HTTP fortzufahren"
-        );
-        
-        if (useHttp) {
-            window.location.href = window.location.href.replace('http:', 'https:');
-            return;
-        }
     }
     
     // Alte Standortverfolgung stoppen
@@ -231,7 +213,7 @@ function geoFindMe() {
         currentUserMarker = null;
     }
     
-    // Button-Status ändern während Suche
+    // Button-Status ändern
     const btn = document.getElementById('find-me');
     const originalText = btn.textContent;
     btn.textContent = 'Suche Standort...';
@@ -242,9 +224,8 @@ function geoFindMe() {
     function success(position) {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
         
-        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)} (Genauigkeit: ${Math.round(accuracy)}m)`);
+        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         
         // Button zurücksetzen
         if (firstLocation) {
@@ -252,7 +233,7 @@ function geoFindMe() {
             btn.disabled = false;
         }
         
-        // Marker erstellen oder aktualisieren
+        // Marker erstellen
         if (!currentUserMarker) {
             currentUserMarker = L.circleMarker([lat, lng], {
                 radius: 10,
@@ -261,7 +242,18 @@ function geoFindMe() {
                 fillOpacity: 0.9,
                 weight: 3
             }).addTo(map);
-          
+            
+            // ZUERST einfaches Popup
+            currentUserMarker.bindPopup(`
+                <div style="font-family: Arial; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                        📍 Ihr Standort
+                    </h4>
+                    <div style="font-size: 14px;">
+                        Adresse wird ermittelt...
+                    </div>
+                </div>
+            `);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
@@ -269,17 +261,12 @@ function geoFindMe() {
         // Bei erstem Standort Karte zentrieren
         if (firstLocation) {
             currentUserMarker.openPopup();
-            map.setView([lat, lng], 16, {
-                animate: true,
-                duration: 1.0
-            });
+            map.setView([lat, lng], 16, { animate: true });
             firstLocation = false;
-            
-            showMessage(`✅ Standort gefunden! Genauigkeit: ${Math.round(accuracy)} Meter`, 'success');
         }
         
-        // Adresse ermitteln und anzeigen
-        getAddressFromCoords(lat, lng, accuracy);
+        // Adresse ermitteln
+        getSimpleAddress(lat, lng);
     }
     
     function error(err) {
@@ -289,47 +276,27 @@ function geoFindMe() {
         btn.textContent = originalText;
         btn.disabled = false;
         
-        let errorMessage = "Standort konnte nicht ermittelt werden.\n\n";
-        
-        switch(err.code) {
-            case err.PERMISSION_DENIED:
-                errorMessage += "🔒 Standort-Zugriff wurde verweigert.\n";
-                errorMessage += "Bitte erlauben Sie den Standortzugriff in Ihren Browsereinstellungen.";
-                break;
-            case err.POSITION_UNAVAILABLE:
-                errorMessage += "📡 Standortinformation nicht verfügbar.\n";
-                errorMessage += "Stellen Sie sicher, dass GPS/WLAN aktiviert ist.";
-                break;
-            case err.TIMEOUT:
-                errorMessage += "⏱️ Zeitüberschreitung bei Standortabfrage.\n";
-                errorMessage += "Bitte versuchen Sie es erneut.";
-                break;
-            default:
-                errorMessage += "❌ Unbekannter Fehler: " + err.message;
+        let errorMessage = "Standort konnte nicht ermittelt werden.";
+        if (err.code === err.PERMISSION_DENIED) {
+            errorMessage = "Standort-Zugriff wurde verweigert.";
         }
         
         showMessage(errorMessage, 'error');
         
-        // Fallback: Zeige Wien Zentrum
+        // Fallback: Wien Zentrum
         if (!currentUserMarker) {
-            currentUserMarker = L.marker([48.2082, 16.3738], {
-                icon: L.icon({
-                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41]
-                })
-            }).addTo(map);
-            
+            currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
             currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 220px;">
-                    <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                    <p style="margin: 3px 0; font-size: 13px;">
-                        <strong>Standort nicht verfügbar</strong><br>
-                        Gezeigter Ort: Wien Zentrum
-                    </p>
+                <div style="font-family: Arial; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                        📍 Ihr Standort
+                    </h4>
+                    <div style="font-size: 14px;">
+                        Wien Zentrum<br>
+                        1010 Wien
+                    </div>
                 </div>
             `).openPopup();
-            
             map.setView([48.2082, 16.3738], 14);
         }
     }
@@ -338,46 +305,29 @@ function geoFindMe() {
     navigator.geolocation.getCurrentPosition(
         success,
         error,
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        }
-    );
-    
-    // Kontinuierliche Verfolgung starten (optional)
-    positionWatchId = navigator.geolocation.watchPosition(
-        success,
-        error,
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 3000
-        }
+        { enableHighAccuracy: true, timeout: 10000 }
     );
 }
 
 // ===============================
-// Adresse von Koordinaten ermitteln (VERBESSERT)
+// EINFACHE ADRESSE ANZEIGEN
 // ===============================
-function getAddressFromCoords(lat, lng, accuracy) {
+function getSimpleAddress(lat, lng) {
     if (!currentUserMarker) return;
     
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`)
-        .then(res => {
-            if (!res.ok) throw new Error('Adressdienst nicht erreichbar');
-            return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
             if (!data || !data.address) {
-                // Keine Adresse gefunden, aber Koordinaten anzeigen
+                // Keine Adresse gefunden
                 currentUserMarker.setPopupContent(`
-                    <div style="font-family: Arial; min-width: 220px;">
-                        <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                        <p style="margin: 3px 0; font-size: 12px; color: #666;">
-                            Genauigkeit: ${Math.round(accuracy)} Meter<br>
-                            <em>Keine Adresse ermittelbar</em>
-                        </p>
+                    <div style="font-family: Arial; min-width: 200px;">
+                        <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                            📍 Ihr Standort
+                        </h4>
+                        <div style="font-size: 14px;">
+                            Adresse nicht verfügbar
+                        </div>
                     </div>
                 `);
                 return;
@@ -386,86 +336,65 @@ function getAddressFromCoords(lat, lng, accuracy) {
             const addr = data.address;
             
             // Straße + Hausnummer
-            let street = '';
-            if (addr.road) street = addr.road;
-            else if (addr.pedestrian) street = addr.pedestrian;
-            else if (addr.footway) street = addr.footway;
-            
+            let street = addr.road || addr.pedestrian || '';
             const number = addr.house_number ? ` ${addr.house_number}` : '';
             const streetWithNumber = street ? `${street}${number}` : '';
             
-            // Stadt/Gemeinde
-            let city = '';
-            if (addr.city) city = addr.city;
-            else if (addr.town) city = addr.town;
-            else if (addr.village) city = addr.village;
-            else if (addr.municipality) city = addr.municipality;
+            // Stadt
+            let city = addr.city || addr.town || addr.village || '';
             
             // Postleitzahl
             const postcode = addr.postcode || '';
             
-            // Bundesland
-            const state = addr.state || '';
-            
-            // Vollständige Adresse zusammenbauen
-            let fullAddress = '';
+            // Adresse zusammenbauen
+            let addressText = '';
             
             if (streetWithNumber) {
-                fullAddress += `<strong>${streetWithNumber}</strong>`;
-                if (postcode || city) fullAddress += '<br>';
+                addressText += streetWithNumber;
             }
             
             if (postcode && city) {
-                fullAddress += `${postcode} ${city}`;
+                if (addressText) addressText += '<br>';
+                addressText += `${postcode} ${city}`;
             } else if (city) {
-                fullAddress += city;
+                if (addressText) addressText += '<br>';
+                addressText += city;
             } else if (postcode) {
-                fullAddress += postcode;
+                if (addressText) addressText += '<br>';
+                addressText += postcode;
             }
             
-            if (state && state !== city) {
-                fullAddress += `, ${state}`;
+            // Wenn keine Adresse, dann "Unbekannter Ort"
+            if (!addressText) {
+                addressText = 'Unbekannter Ort';
             }
             
-            // Land
-            const country = addr.country || 'Österreich';
-            if (country && country !== 'Österreich') {
-                fullAddress += `, ${country}`;
-            }
-            
-            // Popup mit voller Adresse aktualisieren
+            // Popup aktualisieren
             currentUserMarker.setPopupContent(`
-                <div style="font-family: Arial; min-width: 250px;">
+                <div style="font-family: Arial; min-width: 200px;">
                     <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr aktueller Standort
+                        📍 Ihr Standort
                     </h4>
-                    
-                    ${fullAddress ? `
-                    <div style="margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                        <div style="font-size: 14px; font-weight: bold; color: #333;">
-                            ${fullAddress}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    <div style="font-size: 11px; color: #888; margin-top: 8px; border-top: 1px solid #eee; padding-top: 5px;">
-                        <em>Standort wird aktualisiert...</em>
+                    <div style="font-size: 14px; line-height: 1.4;">
+                        ${addressText}
                     </div>
                 </div>
             `);
             
-            // Optional: In Console ausgeben
-            console.log('🏠 Adresse ermittelt:', {
-                straße: streetWithNumber,
-                plz: postcode,
-                ort: city,
-                bundesland: state,
-                land: country
-            });
-            
         })
         .catch(err => {
             console.log('Adressermittlung fehlgeschlagen:', err);
+            // Bei Fehler einfache Meldung
+            currentUserMarker.setPopupContent(`
+                <div style="font-family: Arial; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                        📍 Ihr Standort
+                    </h4>
+                    <div style="font-size: 14px;">
+                        Adresse nicht verfügbar
+                    </div>
+                </div>
+            `);
         });
 }
 
