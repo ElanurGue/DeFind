@@ -30,71 +30,52 @@ const heartIcon = L.icon({
 });
 
 // ===============================
-// Konfiguration - HIER DEINE RAILWAY URL EINTRAGEN!
+// RAILWAY API KONFIGURATION
 // ===============================
-const CONFIG = {
-    // RAILWAY URL: Gehe zu railway.app → DeFind → Settings → Domains
-    // Kopiere die URL und füge sie hier ein (mit /api/standorte am Ende)
-    API_URL: 'https://defi-finder-production.up.railway.app/api/standorte',
-    
-    // Für lokale Entwicklung auf deinem Laptop:
-    // API_URL: 'http://localhost:3000/api/standorte'
-    
-    // Automatische URL-Erkennung
-    getApiUrl: function() {
-        // Wenn localhost, dann lokale API
-        if (window.location.hostname.includes('localhost') || 
-            window.location.hostname.includes('127.0.0.1')) {
-            return 'http://localhost:3000/api/standorte';
-        }
-        // Ansonsten Railway URL
-        return this.API_URL;
-    }
-};
+const RAILWAY_API = 'https://defind-production.up.railway.app/api/standorte';
 
 // ===============================
-// Defi-Daten laden
+// Defi-Daten von Railway laden
 // ===============================
 async function loadDefiData() {
     try {
-        const apiUrl = CONFIG.getApiUrl();
-        console.log('🌐 Lade Defi-Daten von:', apiUrl);
+        console.log('🌐 Lade Defis von Railway API:', RAILWAY_API);
         
-        const response = await fetch(apiUrl, {
+        const response = await fetch(RAILWAY_API, {
             mode: 'cors',
             headers: {
                 'Accept': 'application/json'
             }
         });
         
-        console.log('📊 API Response Status:', response.status);
+        console.log('📊 API Status:', response.status, response.statusText);
         
         if (!response.ok) {
-            throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
+            throw new Error(`API Fehler: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('✅ API-Daten empfangen:', data);
+        console.log('✅ API Antwort:', data);
         
-        // Daten verarbeiten (Railway Format: {success, data} oder direkt Array)
-        if (data.success && data.data) {
+        if (data.success) {
             defiList = data.data;
-            console.log(`🗺️ ${defiList.length} Defis von Railway geladen`);
-        } else if (Array.isArray(data)) {
-            defiList = data;
-            console.log(`🗺️ ${defiList.length} Defis von lokaler API geladen`);
+            console.log(`🗺️ ${defiList.length} Defis geladen (Mode: ${data.mode})`);
+            
+            // Defis auf Karte anzeigen
+            displayDefisOnMap();
+            
+            // Erfolgsmeldung
+            showMessage(`✅ ${defiList.length} Defibrillatoren geladen`, 'success');
         } else {
-            console.warn('⚠️ Unerwartetes Datenformat:', data);
-            throw new Error('Ungültiges Datenformat');
+            throw new Error('API returned success: false');
         }
-
-        // Defis auf Karte anzeigen
-        displayDefisOnMap();
         
     } catch (error) {
-        console.error('❌ Fehler beim Laden der Defi-Daten:', error);
-        showErrorMessage('Konnte keine Defis laden. Verwende Fallback-Daten.');
-        loadFallbackData();
+        console.error('❌ Fehler beim Laden:', error);
+        
+        // Fallback zu statischen Defis
+        loadFallbackDefis();
+        showMessage('⚠️ Verbindungsfehler. Lokale Daten werden verwendet.', 'warning');
     }
 }
 
@@ -102,36 +83,34 @@ async function loadDefiData() {
 // Defis auf Karte anzeigen
 // ===============================
 function displayDefisOnMap() {
-    // Alte Marker löschen (falls vorhanden)
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker && layer.options.icon === heartIcon) {
-            map.removeLayer(layer);
-        }
-    });
+    // Alte Marker entfernen
+    clearDefiMarkers();
     
     // Neue Marker hinzufügen
     defiList.forEach(defi => {
         const marker = L.marker([defi.latitude, defi.longitude], {
-            icon: heartIcon
+            icon: heartIcon,
+            title: `${defi.adresse.straße} ${defi.adresse.hausnummer}`
         }).addTo(map);
         
+        // Popup mit Defi-Informationen
         marker.bindPopup(`
-            <div style="font-family: Arial; min-width: 220px;">
+            <div style="font-family: Arial; min-width: 250px;">
                 <h3 style="margin: 0 0 10px 0; color: #d63031; font-size: 16px;">
                     🩺 Defibrillator
                 </h3>
-                <p style="margin: 5px 0;">
+                <div style="margin-bottom: 8px;">
                     <strong>${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
                     ${defi.adresse.plz} ${defi.adresse.stadt}
-                </p>
-                <p style="margin: 5px 0; font-size: 14px; color: #555; font-style: italic;">
+                </div>
+                <div style="font-size: 14px; color: #555; margin-bottom: 8px;">
                     📍 ${defi.zusatzinfo}
-                </p>
+                </div>
                 <hr style="margin: 10px 0;">
-                <p style="margin: 5px 0; font-size: 12px; color: #777;">
-                    🆔 ID: ${defi.id} | 
+                <div style="font-size: 12px; color: #777;">
+                    ID: ${defi.id} | 
                     ${defi.aktiv ? '✅ Aktiv' : '❌ Inaktiv'}
-                </p>
+                </div>
             </div>
         `);
         
@@ -141,20 +120,31 @@ function displayDefisOnMap() {
         });
     });
     
-    // Karte auf alle Defis zoomen
+    // Karte auf alle Defis zoomen (wenn welche vorhanden)
     if (defiList.length > 0) {
         const bounds = L.latLngBounds(defiList.map(d => [d.latitude, d.longitude]));
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-        console.log('✅ Karte auf Defis gezoomt');
     }
 }
 
 // ===============================
-// Fallback-Daten (wenn API nicht erreichbar)
+// Alte Defi-Marker entfernen
 // ===============================
-function loadFallbackData() {
+function clearDefiMarkers() {
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer.options.icon === heartIcon) {
+            map.removeLayer(layer);
+        }
+    });
+}
+
+// ===============================
+// Fallback-Daten (wenn API nicht geht)
+// ===============================
+function loadFallbackDefis() {
     console.log('⚠️ Verwende Fallback-Daten');
     
+    // 3 Beispiel-Defis
     defiList = [
         {
             id: 1,
@@ -183,7 +173,7 @@ function loadFallbackData() {
             aktiv: true
         },
         {
-            id: 3,
+            id: 17,
             latitude: 48.1953328,
             longitude: 16.3563125,
             adresse: {
@@ -198,55 +188,47 @@ function loadFallbackData() {
     ];
     
     displayDefisOnMap();
-    showErrorMessage('Offline-Modus: Es werden nur Beispiel-Daten angezeigt.');
 }
 
 // ===============================
 // Live-Standort
 // ===============================
 function geoFindMe() {
-    console.log('📍 Standort-Button geklickt');
+    console.log('📍 Live-Standort gestartet');
     
-    // Prüfen ob Browser Geolocation unterstützt
     if (!navigator.geolocation) {
-        alert("Ihr Browser unterstützt keine Standortabfrage. Bitte verwenden Sie einen modernen Browser.");
+        showMessage('Ihr Browser unterstützt keine Standortabfrage.', 'error');
         return;
     }
     
-    // HTTPS erforderlich für Geolocation (außer localhost)
+    // HTTPS prüfen (für GitHub Pages)
     if (window.location.protocol !== 'https:' && 
-        !window.location.hostname.includes('localhost') &&
-        !window.location.hostname.includes('127.0.0.1')) {
-        
-        const useHttp = confirm(
-            "Standortzugriff benötigt HTTPS für volle Funktionalität.\n\n" +
-            "Möchten Sie zu HTTPS wechseln?\n" +
-            "✓ Klicken Sie OK für HTTPS (empfohlen)\n" +
-            "✗ Klicken Sie Abbrechen um mit HTTP fortzufahren"
+        !window.location.hostname.includes('localhost')) {
+        const useHttps = confirm(
+            'Für Standortzugriff wird HTTPS benötigt.\n\n' +
+            'Möchten Sie zu HTTPS wechseln?'
         );
-        
-        if (useHttp) {
+        if (useHttps) {
             window.location.href = window.location.href.replace('http:', 'https:');
             return;
         }
     }
     
-    // Alte Standortverfolgung stoppen
+    // Alte Verfolgung stoppen
     if (positionWatchId) {
         navigator.geolocation.clearWatch(positionWatchId);
-        positionWatchId = null;
     }
     
-    // Alten Standort-Marker entfernen
+    // Alten Marker entfernen
     if (currentUserMarker) {
         map.removeLayer(currentUserMarker);
         currentUserMarker = null;
     }
     
-    // Button-Status ändern während Suche
+    // Button-Status
     const btn = document.getElementById('find-me');
     const originalText = btn.textContent;
-    btn.textContent = 'Suche Standort...';
+    btn.textContent = 'Suche...';
     btn.disabled = true;
     
     let firstLocation = true;
@@ -256,7 +238,7 @@ function geoFindMe() {
         const lng = position.coords.longitude;
         const accuracy = position.coords.accuracy;
         
-        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)} (Genauigkeit: ${Math.round(accuracy)}m)`);
+        console.log(`📍 Standort: ${lat.toFixed(6)}, ${lng.toFixed(6)} (${Math.round(accuracy)}m)`);
         
         // Button zurücksetzen
         if (firstLocation) {
@@ -264,7 +246,7 @@ function geoFindMe() {
             btn.disabled = false;
         }
         
-        // Marker erstellen oder aktualisieren
+        // Marker erstellen/aktualisieren
         if (!currentUserMarker) {
             currentUserMarker = L.circleMarker([lat, lng], {
                 radius: 10,
@@ -293,58 +275,38 @@ function geoFindMe() {
         // Bei erstem Standort Karte zentrieren
         if (firstLocation) {
             currentUserMarker.openPopup();
-            map.setView([lat, lng], 16, {
-                animate: true,
-                duration: 1.0
-            });
+            map.setView([lat, lng], 16, { animate: true });
             firstLocation = false;
             
-            showSuccessMessage(`Standort gefunden! Genauigkeit: ${Math.round(accuracy)} Meter`);
+            showMessage(`✅ Standort gefunden! (${Math.round(accuracy)}m Genauigkeit)`, 'success');
         }
-        
-        // Adresse ermitteln (optional)
-        getAddressFromCoords(lat, lng);
     }
     
     function error(err) {
         console.error('❌ Standortfehler:', err);
         
-        // Button zurücksetzen
         btn.textContent = originalText;
         btn.disabled = false;
         
-        let errorMessage = "Standort konnte nicht ermittelt werden.\n\n";
-        
+        let message = 'Standort konnte nicht ermittelt werden.';
         switch(err.code) {
             case err.PERMISSION_DENIED:
-                errorMessage += "🔒 Standort-Zugriff wurde verweigert.\n";
-                errorMessage += "Bitte erlauben Sie den Standortzugriff in Ihren Browsereinstellungen.";
+                message = 'Standort-Zugriff wurde verweigert. Bitte erlauben Sie den Zugriff in Ihren Browsereinstellungen.';
                 break;
             case err.POSITION_UNAVAILABLE:
-                errorMessage += "📡 Standortinformation nicht verfügbar.\n";
-                errorMessage += "Stellen Sie sicher, dass GPS/WLAN aktiviert ist.";
+                message = 'Standortinformation nicht verfügbar. Stellen Sie sicher, dass GPS/WLAN aktiviert ist.';
                 break;
             case err.TIMEOUT:
-                errorMessage += "⏱️ Zeitüberschreitung bei Standortabfrage.\n";
-                errorMessage += "Bitte versuchen Sie es erneut.";
+                message = 'Zeitüberschreitung bei Standortabfrage.';
                 break;
-            default:
-                errorMessage += "❌ Unbekannter Fehler: " + err.message;
         }
         
-        showErrorMessage(errorMessage);
+        showMessage(message, 'error');
         
-        // Fallback: Zeige Wien Zentrum
+        // Fallback: Wien Zentrum anzeigen
         if (!currentUserMarker) {
-            currentUserMarker = L.marker([48.2082, 16.3738], {
-                icon: L.icon({
-                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41]
-                })
-            }).addTo(map);
-            
-            currentUserMarker.bindPopup('<b>Standort konnte nicht ermittelt werden</b><br>Gezeigter Ort: Wien Zentrum').openPopup();
+            currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
+            currentUserMarker.bindPopup('<b>Standort nicht verfügbar</b><br>Gezeigter Ort: Wien Zentrum').openPopup();
             map.setView([48.2082, 16.3738], 14);
         }
     }
@@ -353,59 +315,15 @@ function geoFindMe() {
     navigator.geolocation.getCurrentPosition(
         success,
         error,
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 10000 }
     );
     
-    // Kontinuierliche Verfolgung starten (optional)
+    // Kontinuierliche Verfolgung
     positionWatchId = navigator.geolocation.watchPosition(
         success,
         error,
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 3000
-        }
+        { enableHighAccuracy: true, maximumAge: 3000 }
     );
-}
-
-// ===============================
-// Adresse von Koordinaten ermitteln
-// ===============================
-function getAddressFromCoords(lat, lng) {
-    if (!currentUserMarker) return;
-    
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-        .then(res => res.json())
-        .then(data => {
-            if (!data || !data.address) return;
-            
-            const addr = data.address;
-            const street = addr.road || addr.pedestrian || '';
-            const number = addr.house_number ? ' ' + addr.house_number : '';
-            const city = addr.city || addr.town || addr.village || '';
-            const postcode = addr.postcode || '';
-            
-            if (street) {
-                const addressText = `${street}${number}, ${postcode} ${city}`;
-                currentUserMarker.setPopupContent(`
-                    <div style="font-family: Arial; min-width: 220px;">
-                        <h4 style="margin: 0 0 5px 0; color: #1a5fb4;">📍 Ihr Standort</h4>
-                        <p style="margin: 3px 0; font-size: 13px;">
-                            <strong>Adresse:</strong><br>
-                            ${addressText}
-                        </p>
-                        <p style="margin: 3px 0; font-size: 12px; color: #666;">
-                            Koordinaten: ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                        </p>
-                    </div>
-                `);
-            }
-        })
-        .catch(err => console.log('Adressermittlung fehlgeschlagen:', err));
 }
 
 // ===============================
@@ -413,20 +331,18 @@ function getAddressFromCoords(lat, lng) {
 // ===============================
 function findNearestDefi(lat, lng) {
     if (!defiList || defiList.length === 0) {
-        showErrorMessage('Keine Defis verfügbar. Bitte warten Sie bis Daten geladen sind.');
+        showMessage('Keine Defis verfügbar.', 'warning');
         return null;
     }
     
     let nearest = null;
     let minDist = Infinity;
-    let nearestIndex = -1;
     
-    defiList.forEach((defi, index) => {
+    defiList.forEach(defi => {
         const dist = map.distance([lat, lng], [defi.latitude, defi.longitude]);
         if (dist < minDist) {
             minDist = dist;
             nearest = defi;
-            nearestIndex = index;
         }
     });
     
@@ -438,31 +354,30 @@ function findNearestDefi(lat, lng) {
 }
 
 // ===============================
-// Route zum nächsten Defi berechnen
+// Route zum nächsten Defi
 // ===============================
 function routeToNearestDefi() {
-    // Prüfen ob Standort bekannt ist
     if (!currentUserMarker) {
         const startLocation = confirm(
-            "Ihr Standort ist nicht bekannt.\n\n" +
-            "Möchten Sie zuerst Ihren Standort ermitteln?\n" +
-            "✓ OK: Standort ermitteln\n" +
-            "✗ Abbrechen: Route von Wien Zentrum berechnen"
+            'Ihr Standort ist nicht bekannt.\n\n' +
+            'Möchten Sie zuerst Ihren Standort ermitteln?\n' +
+            'OK = Standort ermitteln\n' +
+            'Abbrechen = Route von Wien Zentrum berechnen'
         );
         
         if (startLocation) {
             geoFindMe();
             return;
         } else {
-            // Fallback: Wien Zentrum als Startpunkt
+            // Fallback: Wien Zentrum
             currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
             currentUserMarker.bindPopup('<b>Startpunkt: Wien Zentrum</b>').openPopup();
+            map.setView([48.2082, 16.3738], 14);
         }
     }
     
-    // Prüfen ob Defis geladen sind
     if (!defiList || defiList.length === 0) {
-        showErrorMessage('Keine Defis verfügbar. Bitte warten Sie bis Daten geladen sind.');
+        showMessage('Keine Defis verfügbar.', 'warning');
         return;
     }
     
@@ -470,7 +385,7 @@ function routeToNearestDefi() {
     const nearest = findNearestDefi(userPos.lat, userPos.lng);
     
     if (!nearest) {
-        showErrorMessage('Keinen Defi in der Nähe gefunden.');
+        showMessage('Keinen Defi in der Nähe gefunden.', 'warning');
         return;
     }
     
@@ -493,140 +408,83 @@ function routeToNearestDefi() {
         fitSelectedRoutes: true,
         show: false,
         lineOptions: {
-            styles: [
-                {
-                    color: '#0e6127',
-                    weight: 6,
-                    opacity: 0.8,
-                    dashArray: '10, 10'
-                }
-            ]
+            styles: [{
+                color: '#0e6127',
+                weight: 6,
+                opacity: 0.8
+            }]
         },
-        createMarker: function(i, waypoint, n) {
-            // Keine Marker für Start/Ziel anzeigen
-            return null;
-        }
+        createMarker: function() { return null; }
     }).addTo(map);
     
     // Distanz anzeigen
     const distance = map.distance([userPos.lat, userPos.lng], [nearest.latitude, nearest.longitude]);
     const distanceKm = (distance / 1000).toFixed(2);
     
+    showMessage(`🚑 Route zum nächsten Defi (${Math.round(distance)}m, ${distanceKm}km)`, 'success');
+    
     // Ziel-Marker hervorheben
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker && 
-            layer.getLatLng().lat === nearest.latitude && 
-            layer.getLatLng().lng === nearest.longitude) {
-            
-            // Marker animieren
-            layer.setZIndexOffset(1000);
-            layer.openPopup();
-            
-            // Marker pulsieren lassen
-            let size = 32;
-            const pulse = setInterval(() => {
-                size = size === 32 ? 40 : 32;
-                layer.setIcon(L.icon({
-                    iconUrl: 'bilder/heart.png',
-                    iconSize: [size, size],
-                    iconAnchor: [size/2, size]
-                }));
-            }, 500);
-            
-            // Nach 5 Sekunden stoppen
-            setTimeout(() => clearInterval(pulse), 5000);
-        }
-    });
-    
-    showSuccessMessage(`Route zum nächsten Defi berechnet! Entfernung: ${Math.round(distance)}m (${distanceKm}km)`);
-    
-    // Karte auf Route zoomen
     setTimeout(() => {
-        const bounds = L.latLngBounds([
-            [userPos.lat, userPos.lng],
-            [nearest.latitude, nearest.longitude]
-        ]);
-        map.fitBounds(bounds, { padding: [100, 100] });
-    }, 1000);
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker && 
+                layer.getLatLng().lat === nearest.latitude && 
+                layer.getLatLng().lng === nearest.longitude) {
+                layer.openPopup();
+            }
+        });
+    }, 500);
 }
 
 // ===============================
-// Hilfsfunktionen für Meldungen
+// Nachricht anzeigen
 // ===============================
-function showSuccessMessage(message) {
-    console.log('✅ ' + message);
-    // Optional: Notification anzeigen
-    if (typeof alert !== 'undefined') {
-        setTimeout(() => alert('✅ ' + message), 100);
+function showMessage(text, type = 'info') {
+    console.log(`${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'} ${text}`);
+    
+    // Kleine Notification (optional)
+    if (typeof alert !== 'undefined' && type === 'error') {
+        setTimeout(() => alert(text), 100);
     }
 }
 
-function showErrorMessage(message) {
-    console.error('❌ ' + message);
-    // Optional: Notification anzeigen
-    if (typeof alert !== 'undefined') {
-        setTimeout(() => alert('❌ ' + message), 100);
-    }
-}
-
-function showInfoMessage(message) {
-    console.log('ℹ️ ' + message);
-}
-
 // ===============================
-// Initialisierung
+// App initialisieren
 // ===============================
 function initApp() {
-    console.log('🚀 DeFind App wird gestartet...');
-    console.log('🌍 URL:', window.location.href);
-    console.log('🔒 HTTPS:', window.location.protocol === 'https:');
+    console.log('🚀 DeFind App wird gestartet');
+    console.log('🔗 API:', RAILWAY_API);
     
-    // Daten laden
+    // Defis laden
     loadDefiData();
     
-    // Event Listener für Buttons
+    // Event Listener
     document.getElementById('find-me').addEventListener('click', geoFindMe);
     document.getElementById('find-defi').addEventListener('click', routeToNearestDefi);
     
-    // Automatisch zu HTTPS wechseln für GitHub Pages
+    // Für GitHub Pages: HTTPS erzwingen
     if (window.location.hostname.includes('github.io') && 
-        window.location.protocol !== 'https:' &&
-        !window.location.href.includes('localhost')) {
-        
-        console.log('🔄 Wechsel zu HTTPS für GitHub Pages');
+        window.location.protocol !== 'https:') {
+        console.log('🔄 Wechsel zu HTTPS');
         window.location.href = window.location.href.replace('http:', 'https:');
-        return; // Stoppe weitere Ausführung (Seite wird neu geladen)
     }
-    
-    console.log('✅ App initialisiert');
 }
 
 // ===============================
-// DOM Ready Event
+// DOM Ready
 // ===============================
 document.addEventListener('DOMContentLoaded', initApp);
 
 // ===============================
-// Globale Funktionen (für Debugging)
+// Debug-Funktionen (in Console)
 // ===============================
 window.debugDefis = function() {
-    console.log('🔍 Defi-Daten debuggen:');
-    console.log('Anzahl Defis:', defiList.length);
-    console.log('Defi-Liste:', defiList);
-    console.log('API URL:', CONFIG.getApiUrl());
-    console.log('Karten-Zentrum:', map.getCenter());
-    console.log('Karten-Zoom:', map.getZoom());
+    console.log('🔍 DEBUG:');
+    console.log('Defis:', defiList);
+    console.log('API:', RAILWAY_API);
+    console.log('Karten-Center:', map.getCenter());
 };
 
 window.reloadDefis = function() {
-    console.log('🔄 Defis neu laden...');
+    console.log('🔄 Defis neu laden');
     loadDefiData();
-};
-
-window.clearRoute = function() {
-    if (routingControl) {
-        map.removeControl(routingControl);
-        routingControl = null;
-        console.log('🗑️ Route gelöscht');
-    }
 };
