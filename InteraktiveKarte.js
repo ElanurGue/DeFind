@@ -18,6 +18,7 @@ let defiList = [];
 let routingControl = null;
 let currentUserMarker = null;
 let positionWatchId = null;
+let locationPermissionAsked = false; // Neu: Verhindert wiederholtes Fragen
 
 // ===============================
 // Icons
@@ -131,16 +132,14 @@ function displayDefisOnMap() {
         marker.on('click', function() {
             map.setView([defi.latitude, defi.longitude], 17);
         });
-
-                
-            });
-            
-            // Karte auf alle Defis zoomen (wenn welche vorhanden)
-            if (defiList.length > 0) {
-                const bounds = L.latLngBounds(defiList.map(d => [d.latitude, d.longitude]));
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-            }
+    });
+    
+    // Karte auf alle Defis zoomen (wenn welche vorhanden)
+    if (defiList.length > 0) {
+        const bounds = L.latLngBounds(defiList.map(d => [d.latitude, d.longitude]));
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
     }
+}
 
 // ===============================
 // Alte Defi-Marker entfernen
@@ -206,24 +205,202 @@ function loadFallbackDefis() {
 }
 
 // ===============================
-// Live-Standort (EINFACHE ADRESSE)
+// AUTOMATISCHE STANDFORTABFRAGE BEIM START
 // ===============================
-function geoFindMe() {
-    console.log('📍 Standort-Button geklickt');
+function askForLocationPermission() {
+    // Verhindert wiederholtes Fragen
+    if (locationPermissionAsked) return;
+    locationPermissionAsked = true;
     
-    // Prüfen ob Browser Geolocation unterstützt
-    if (!navigator.geolocation) {
-        alert("Ihr Browser unterstützt keine Standortabfrage.");
-        return;
-    }
+    // Kleine Verzögerung, damit die Seite erst vollständig geladen ist
+    setTimeout(() => {
+        // Überprüfen ob Browser Geolocation unterstützt
+        if (!navigator.geolocation) {
+            console.log('❌ Browser unterstützt keine Geolocation');
+            showMessage('Ihr Browser unterstützt keine Standortabfrage.', 'warning');
+            return;
+        }
+        
+        // Freundliche Abfrage anzeigen
+        const userResponse = confirm(
+            'DeFind - Optimale Routenfunktion\n\n' +
+            'Möchten Sie Ihren Standort teilen, um die beste Route zum nächsten Defibrillator zu berechnen?\n\n' +
+            '• Ihre Daten werden nicht gespeichert\n' +
+            '• Nur für die Routenberechnung verwendet\n' +
+            '• Sie können jederzeit ablehnen\n\n' +
+            'OK = Standort teilen\n' +
+            'Abbrechen = Ohne Standort fortfahren'
+        );
+        
+        if (userResponse) {
+            console.log('📍 Benutzer hat Standortfreigabe akzeptiert');
+            getUserLocation();
+        } else {
+            console.log('📍 Benutzer hat Standortfreigabe abgelehnt');
+            showMessage('Sie können Ihren Standort jederzeit über den "Standort teilen" Button aktivieren.', 'info');
+            
+            // Fallback auf Wien Zentrum setzen
+            setDefaultLocation();
+        }
+    }, 1500); // 1.5 Sekunden Verzögerung für bessere UX
+}
+
+// ===============================
+// Standort abrufen (nach Bestätigung)
+// ===============================
+function getUserLocation() {
+    console.log('📍 Starte Standortabfrage...');
     
-    // Alte Standortverfolgung stoppen
+    // Alte Verfolgung stoppen
     if (positionWatchId) {
         navigator.geolocation.clearWatch(positionWatchId);
         positionWatchId = null;
     }
     
-    // Alten Standort-Marker entfernen
+    // Alten Marker entfernen
+    if (currentUserMarker) {
+        map.removeLayer(currentUserMarker);
+        currentUserMarker = null;
+    }
+    
+    let firstLocation = true;
+    
+    function success(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        
+        // Marker erstellen oder aktualisieren
+        if (!currentUserMarker) {
+            createUserMarker(lat, lng);
+        } else {
+            currentUserMarker.setLatLng([lat, lng]);
+        }
+        
+        // Bei erstem Standort Karte zentrieren
+        if (firstLocation) {
+            currentUserMarker.openPopup();
+            map.setView([lat, lng], 16, { animate: true });
+            firstLocation = false;
+            
+            // Erfolgsmeldung
+            showMessage('✅ Standort ermittelt - Optimale Routen sind jetzt möglich!', 'success');
+        }
+        
+        // Adresse ermitteln
+        getSimpleAddress(lat, lng);
+    }
+    
+    function error(err) {
+        console.error('❌ Standortfehler:', err);
+        
+        let errorMessage = "Standort konnte nicht ermittelt werden.";
+        if (err.code === err.PERMISSION_DENIED) {
+            errorMessage = "Standort-Zugriff wurde verweigert. Sie können dies in den Browsereinstellungen ändern.";
+        } else if (err.code === err.TIMEOUT) {
+            errorMessage = "Standortabfrage hat zu lange gedauert.";
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+            errorMessage = "Standortinformationen sind nicht verfügbar.";
+        }
+        
+        showMessage(errorMessage, 'error');
+        
+        // Fallback auf Wien Zentrum
+        setDefaultLocation();
+    }
+    
+    // Standort mit hoher Genauigkeit abrufen
+    positionWatchId = navigator.geolocation.watchPosition(
+        success,
+        error,
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+    
+    // Einmalige Abfrage als Fallback
+    navigator.geolocation.getCurrentPosition(success, error, {
+        enableHighAccuracy: true,
+        timeout: 10000
+    });
+}
+
+// ===============================
+// Standort-Marker erstellen
+// ===============================
+function createUserMarker(lat, lng) {
+    currentUserMarker = L.circleMarker([lat, lng], {
+        radius: 10,
+        color: '#1a5fb4',
+        fillColor: '#62a0ea',
+        fillOpacity: 0.9,
+        weight: 3
+    }).addTo(map);
+    
+    // Temporäres Popup
+    currentUserMarker.bindPopup(`
+        <div style="font-family: Arial; min-width: 200px;">
+            <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                📍 Ihr aktueller Standort
+            </h4>
+            <div style="font-size: 14px;">
+                Adresse wird ermittelt...
+            </div>
+        </div>
+    `);
+}
+
+// ===============================
+// Default-Standort (Wien Zentrum)
+// ===============================
+function setDefaultLocation() {
+    console.log('📍 Verwende Default-Standort (Wien Zentrum)');
+    
+    if (currentUserMarker) {
+        map.removeLayer(currentUserMarker);
+    }
+    
+    currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
+    currentUserMarker.bindPopup(`
+        <div style="font-family: Arial; min-width: 200px;">
+            <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                📍 Standort nicht verfügbar
+            </h4>
+            <div style="font-size: 14px;">
+                Wien Zentrum (Fallback)<br>
+                1010 Wien
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                Tipp: Klicken Sie auf "Standort teilen" für Ihren aktuellen Standort
+            </div>
+        </div>
+    `).openPopup();
+    
+    // Karte auf Wien Zentrum setzen
+    map.setView([48.2082, 16.3738], 14);
+}
+
+// ===============================
+// MANUELLE STANDFORTABFRAGE (für Button)
+// ===============================
+function geoFindMe() {
+    console.log('📍 Manuelle Standortanfrage');
+    
+    if (!navigator.geolocation) {
+        alert("Ihr Browser unterstützt keine Standortabfrage.");
+        return;
+    }
+    
+    // Alte Verfolgung stoppen
+    if (positionWatchId) {
+        navigator.geolocation.clearWatch(positionWatchId);
+        positionWatchId = null;
+    }
+    
+    // Alten Marker entfernen
     if (currentUserMarker) {
         map.removeLayer(currentUserMarker);
         currentUserMarker = null;
@@ -241,7 +418,7 @@ function geoFindMe() {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         
-        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        console.log(`📍 Manueller Standort: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         
         // Button zurücksetzen
         if (firstLocation) {
@@ -251,25 +428,7 @@ function geoFindMe() {
         
         // Marker erstellen
         if (!currentUserMarker) {
-            currentUserMarker = L.circleMarker([lat, lng], {
-                radius: 10,
-                color: '#1a5fb4',
-                fillColor: '#62a0ea',
-                fillOpacity: 0.9,
-                weight: 3
-            }).addTo(map);
-            
-            // ZUERST einfaches Popup
-            currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
-                    </h4>
-                    <div style="font-size: 14px;">
-                        Adresse wird ermittelt...
-                    </div>
-                </div>
-            `);
+            createUserMarker(lat, lng);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
@@ -286,7 +445,7 @@ function geoFindMe() {
     }
     
     function error(err) {
-        console.error('❌ Standortfehler:', err);
+        console.error('❌ Manueller Standortfehler:', err);
         
         // Button zurücksetzen
         btn.textContent = originalText;
@@ -294,35 +453,20 @@ function geoFindMe() {
         
         let errorMessage = "Standort konnte nicht ermittelt werden.";
         if (err.code === err.PERMISSION_DENIED) {
-            errorMessage = "Standort-Zugriff wurde verweigert.";
+            errorMessage = "Standort-Zugriff wurde verweigert. Bitte erlauben Sie den Zugriff in den Browsereinstellungen.";
         }
         
         showMessage(errorMessage, 'error');
         
         // Fallback: Wien Zentrum
-        if (!currentUserMarker) {
-            currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
-            currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
-                    </h4>
-                    <div style="font-size: 14px;">
-                        Wien Zentrum<br>
-                        1010 Wien
-                    </div>
-                </div>
-            `).openPopup();
-            map.setView([48.2082, 16.3738], 14);
-        }
+        setDefaultLocation();
     }
     
     // Standort abfragen
-    navigator.geolocation.getCurrentPosition(
-        success,
-        error,
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
+    navigator.geolocation.getCurrentPosition(success, error, {
+        enableHighAccuracy: true,
+        timeout: 10000
+    });
 }
 
 // ===============================
@@ -335,7 +479,6 @@ function getSimpleAddress(lat, lng) {
         .then(res => res.json())
         .then(data => {
             if (!data || !data.address) {
-                // Keine Adresse gefunden
                 currentUserMarker.setPopupContent(`
                     <div style="font-family: Arial; min-width: 200px;">
                         <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
@@ -350,57 +493,40 @@ function getSimpleAddress(lat, lng) {
             }
             
             const addr = data.address;
-            
-            // Straße + Hausnummer
             let street = addr.road || addr.pedestrian || '';
             const number = addr.house_number ? ` ${addr.house_number}` : '';
             const streetWithNumber = street ? `${street}${number}` : '';
-            
-            // Stadt
             let city = addr.city || addr.town || addr.village || '';
-            
-            // Postleitzahl
             const postcode = addr.postcode || '';
             
-            // Adresse zusammenbauen
             let addressText = '';
-            
-            if (streetWithNumber) {
-                addressText += streetWithNumber;
-            }
-            
+            if (streetWithNumber) addressText += streetWithNumber;
             if (postcode && city) {
                 if (addressText) addressText += '<br>';
                 addressText += `${postcode} ${city}`;
             } else if (city) {
                 if (addressText) addressText += '<br>';
                 addressText += city;
-            } else if (postcode) {
-                if (addressText) addressText += '<br>';
-                addressText += postcode;
             }
             
-            // Wenn keine Adresse, dann "Unbekannter Ort"
-            if (!addressText) {
-                addressText = 'Unbekannter Ort';
-            }
+            if (!addressText) addressText = 'Unbekannter Ort';
             
-            // Popup aktualisieren
             currentUserMarker.setPopupContent(`
                 <div style="font-family: Arial; min-width: 200px;">
                     <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
+                        📍 Ihr aktueller Standort
                     </h4>
                     <div style="font-size: 14px; line-height: 1.4;">
                         ${addressText}
                     </div>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        Für optimale Routenberechnung
+                    </div>
                 </div>
             `);
-            
         })
         .catch(err => {
             console.log('Adressermittlung fehlgeschlagen:', err);
-            // Bei Fehler einfache Meldung
             currentUserMarker.setPopupContent(`
                 <div style="font-family: Arial; min-width: 200px;">
                     <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
@@ -446,22 +572,9 @@ function findNearestDefi(lat, lng) {
 // ===============================
 function routeToNearestDefi() {
     if (!currentUserMarker) {
-        const startLocation = confirm(
-            'Ihr Standort ist nicht bekannt.\n\n' +
-            'Möchten Sie zuerst Ihren Standort ermitteln?\n' +
-            'OK = Standort ermitteln\n' +
-            'Abbrechen = Route von Wien Zentrum berechnen'
-        );
-        
-        if (startLocation) {
-            geoFindMe();
-            return;
-        } else {
-            // Fallback: Wien Zentrum
-            currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
-            currentUserMarker.bindPopup('<b>Startpunkt: Wien Zentrum</b>').openPopup();
-            map.setView([48.2082, 16.3738], 14);
-        }
+        askForLocationPermission();
+        showMessage('Bitte erlauben Sie zuerst den Standortzugriff für die Routenberechnung.', 'info');
+        return;
     }
     
     if (!defiList || defiList.length === 0) {
@@ -536,30 +649,9 @@ function showMessage(text, type = 'info') {
 }
 
 // ===============================
-// App initialisieren
+// Popup Fenster, welche zu einem bestimmten Defi routen
 // ===============================
-function initApp() {
-    console.log('🚀 DeFind App wird gestartet');
-    console.log('🔗 API:', RAILWAY_API);
-    
-    // Defis laden
-    loadDefiData();
-    
-    // Event Listener
-    document.getElementById('find-me').addEventListener('click', geoFindMe);
-    document.getElementById('find-defi').addEventListener('click', routeToNearestDefi);
-    
-    // Für GitHub Pages: HTTPS erzwingen
-    if (window.location.hostname.includes('github.io') && 
-        window.location.protocol !== 'https:') {
-        console.log('🔄 Wechsel zu HTTPS');
-        window.location.href = window.location.href.replace('http:', 'https:');
-    }
-}
-
-//Popup Fenster, welche zu einem bestimmten Defi routen
 function routeToDefi(defi) {
-    // Wenn kein User-Standort vorhanden → zuerst fragen
     if (!currentUserMarker) {
         const ok = confirm(
             'Ihr Standort ist nicht bekannt.\n\n' +
@@ -573,13 +665,11 @@ function routeToDefi(defi) {
 
     const userPos = currentUserMarker.getLatLng();
 
-    // Alte Route entfernen
     if (routingControl) {
         map.removeControl(routingControl);
         routingControl = null;
     }
 
-    // Neue Route
     routingControl = L.Routing.control({
         waypoints: [
             L.latLng(userPos.lat, userPos.lng),
@@ -610,7 +700,30 @@ function routeToDefi(defi) {
     );
 }
 
-
+// ===============================
+// App initialisieren
+// ===============================
+function initApp() {
+    console.log('🚀 DeFind App wird gestartet');
+    console.log('🔗 API:', RAILWAY_API);
+    
+    // Defis laden
+    loadDefiData();
+    
+    // Event Listener für Buttons
+    document.getElementById('find-me').addEventListener('click', geoFindMe);
+    document.getElementById('find-defi').addEventListener('click', routeToNearestDefi);
+    
+    // Automatische Standortabfrage starten (nach kurzer Verzögerung)
+    askForLocationPermission();
+    
+    // Für GitHub Pages: HTTPS erzwingen
+    if (window.location.hostname.includes('github.io') && 
+        window.location.protocol !== 'https:') {
+        console.log('🔄 Wechsel zu HTTPS');
+        window.location.href = window.location.href.replace('http:', 'https:');
+    }
+}
 
 // ===============================
 // DOM Ready
@@ -625,6 +738,7 @@ window.debugDefis = function() {
     console.log('Defis:', defiList);
     console.log('API:', RAILWAY_API);
     console.log('Karten-Center:', map.getCenter());
+    console.log('Standort-Marker:', currentUserMarker ? 'Ja' : 'Nein');
 };
 
 window.reloadDefis = function() {
