@@ -93,23 +93,37 @@ function displayDefisOnMap() {
             title: `${defi.adresse.straße} ${defi.adresse.hausnummer}`
         }).addTo(map);
         
-        // Popup mit Defi-Informationen
+        //Popup Fenster für jeden Defi Marker
         marker.bindPopup(`
-            <div style="font-family: Arial; min-width: 250px;">
-                <h3 style="margin: 0 0 10px 0; color: #d63031; font-size: 16px;">
+            <div style="font-family: Arial; min-width: 220px;">
+                <h4 style="margin: 0 0 8px 0; color: #d63031; font-size: 16px;">
                     🩺 Defibrillator
-                </h3>
-                <div style="margin-bottom: 8px;">
+                </h4>
+
+                <div style="font-size: 14px; margin-bottom: 6px;">
                     <strong>${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
                     ${defi.adresse.plz} ${defi.adresse.stadt}
                 </div>
-                <div style="font-size: 14px; color: #555; margin-bottom: 8px;">
-                    📍 ${defi.zusatzinfo}
+
+                <div style="font-size: 13px; color: #555; margin-bottom: 10px;">
+                    📍 ${defi.zusatzinfo || ''}
                 </div>
-                <hr style="margin: 10px 0;">
-                <div style="font-size: 12px; color: #777;">
-                    ${defi.aktiv ? '✅ Aktiv' : '❌ Inaktiv'}
-                </div>
+
+                <button
+                    style="
+                        width: 100%;
+                        padding: 8px;
+                        background: #0e6127;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        cursor: pointer;
+                    "
+                    onclick="routeToDefi(${JSON.stringify(defi).replace(/"/g, '&quot;')})"
+                >
+                    🚑 Lead to Defi
+                </button>
             </div>
         `);
         
@@ -117,14 +131,16 @@ function displayDefisOnMap() {
         marker.on('click', function() {
             map.setView([defi.latitude, defi.longitude], 17);
         });
-    });
-    
-    // Karte auf alle Defis zoomen (wenn welche vorhanden)
-    if (defiList.length > 0) {
-        const bounds = L.latLngBounds(defiList.map(d => [d.latitude, d.longitude]));
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+
+                
+            });
+            
+            // Karte auf alle Defis zoomen (wenn welche vorhanden)
+            if (defiList.length > 0) {
+                const bounds = L.latLngBounds(defiList.map(d => [d.latitude, d.longitude]));
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+            }
     }
-}
 
 // ===============================
 // Alte Defi-Marker entfernen
@@ -540,6 +556,61 @@ function initApp() {
         window.location.href = window.location.href.replace('http:', 'https:');
     }
 }
+
+//Popup Fenster, welche zu einem bestimmten Defi routen
+function routeToDefi(defi) {
+    // Wenn kein User-Standort vorhanden → zuerst fragen
+    if (!currentUserMarker) {
+        const ok = confirm(
+            'Ihr Standort ist nicht bekannt.\n\n' +
+            'Möchten Sie zuerst Ihren Standort ermitteln?'
+        );
+        if (ok) {
+            geoFindMe();
+        }
+        return;
+    }
+
+    const userPos = currentUserMarker.getLatLng();
+
+    // Alte Route entfernen
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+
+    // Neue Route
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(userPos.lat, userPos.lng),
+            L.latLng(defi.latitude, defi.longitude)
+        ],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        show: false,
+        lineOptions: {
+            styles: [{
+                color: '#0e6127',
+                weight: 6,
+                opacity: 0.8
+            }]
+        },
+        createMarker: () => null
+    }).addTo(map);
+
+    const distance = map.distance(
+        [userPos.lat, userPos.lng],
+        [defi.latitude, defi.longitude]
+    );
+
+    showMessage(
+        `🚑 Route zum Defibrillator (${Math.round(distance)} m)`,
+        'success'
+    );
+}
+
+
 
 // ===============================
 // DOM Ready

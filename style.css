@@ -75,6 +75,7 @@ nav a.active {
 
 
  @media (max-width: 768px) {
+
             header {
                 padding: 1rem;
                 flex-wrap: wrap;
@@ -95,6 +96,7 @@ nav a.active {
                 overflow: hidden;
                 transition: max-height 0.3s ease;
                 display: block;
+                z-index: 900; /*damit Button vor nav und map liegt, so kann man auf Menü-button klicken*/
             }
 
             nav.active {
@@ -109,10 +111,11 @@ nav a.active {
                 flex-direction: column;
                 gap: 0;
                 padding: 1rem 0;
+                margin: 0; 
             }
 
             nav ul li {
-                width: 100%;
+           
                 text-align: center;
                 border-bottom: 1px solid #e8f5e9;
             }
@@ -124,6 +127,8 @@ nav a.active {
             nav a {
                 display: block;
                 padding: 1rem;
+                color: #0e6127;
+                text-decoration: none;
             }
 
             nav a.active {
