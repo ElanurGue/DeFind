@@ -18,7 +18,6 @@ let defiList = [];
 let routingControl = null;
 let currentUserMarker = null;
 let positionWatchId = null;
-let locationPermissionAsked = false; // Neu: Verhindert wiederholtes Fragen
 
 // ===============================
 // Icons
@@ -205,51 +204,72 @@ function loadFallbackDefis() {
 }
 
 // ===============================
-// AUTOMATISCHE STANDFORTABFRAGE BEIM START
+// Hauptfunktion: Nächsten Defi finden MIT Standortabfrage
 // ===============================
-function askForLocationPermission() {
-    // Verhindert wiederholtes Fragen
-    if (locationPermissionAsked) return;
-    locationPermissionAsked = true;
+function findAndRouteToNearestDefi() {
+    console.log('🔍 Finde nächsten Defi...');
     
-    // Kleine Verzögerung, damit die Seite erst vollständig geladen ist
-    setTimeout(() => {
-        // Überprüfen ob Browser Geolocation unterstützt
-        if (!navigator.geolocation) {
-            console.log('❌ Browser unterstützt keine Geolocation');
-            showMessage('Ihr Browser unterstützt keine Standortabfrage.', 'warning');
-            return;
-        }
-        
-        // Freundliche Abfrage anzeigen
-        const userResponse = confirm(
-            'DeFind - Optimale Routenfunktion\n\n' +
-            'Möchten Sie Ihren Standort teilen, um die beste Route zum nächsten Defibrillator zu berechnen?\n\n' +
-            '• Ihre Daten werden nicht gespeichert\n' +
-            '• Nur für die Routenberechnung verwendet\n' +
-            '• Sie können jederzeit ablehnen\n\n' +
-            'OK = Standort teilen\n' +
-            'Abbrechen = Ohne Standort fortfahren'
-        );
-        
-        if (userResponse) {
-            console.log('📍 Benutzer hat Standortfreigabe akzeptiert');
-            getUserLocation();
-        } else {
-            console.log('📍 Benutzer hat Standortfreigabe abgelehnt');
-            showMessage('Sie können Ihren Standort jederzeit über den "Standort teilen" Button aktivieren.', 'info');
-            
-            // Fallback auf Wien Zentrum setzen
-            setDefaultLocation();
-        }
-    }, 1500); // 1.5 Sekunden Verzögerung für bessere UX
+    // Prüfen ob Defis geladen wurden
+    if (!defiList || defiList.length === 0) {
+        showMessage('Keine Defis verfügbar. Bitte warten Sie...', 'warning');
+        loadDefiData();
+        return;
+    }
+    
+    // Wenn schon ein Standort vorhanden ist, direkt Routen berechnen
+    if (currentUserMarker) {
+        calculateRouteToNearestDefi();
+        return;
+    }
+    
+    // Wenn kein Standort, zuerst Standortabfrage
+    askForLocationAndFindDefi();
 }
 
 // ===============================
-// Standort abrufen (nach Bestätigung)
+// Standortabfrage MIT anschließender Routenberechnung
 // ===============================
-function getUserLocation() {
-    console.log('📍 Starte Standortabfrage...');
+function askForLocationAndFindDefi() {
+    // Prüfen ob Browser Geolocation unterstützt
+    if (!navigator.geolocation) {
+        alert("Ihr Browser unterstützt keine Standortabfrage.");
+        // Fallback: Defi-Liste anzeigen
+        showDefiListPopup();
+        return;
+    }
+    
+    // User-freundliche Abfrage
+    const userResponse = confirm(
+        'DeFind - Nächsten Defibrillator finden\n\n' +
+        'Um den nächstgelegenen Defibrillator zu finden, benötigen wir Ihren aktuellen Standort.\n\n' +
+        '• Ihre Daten werden nicht gespeichert\n' +
+        '• Nur für die Routenberechnung verwendet\n' +
+        '• Sie können auch ohne Standort fortfahren\n\n' +
+        'OK = Standort teilen und Route berechnen\n' +
+        'Abbrechen = Ohne Standort fortfahren'
+    );
+    
+    if (userResponse) {
+        console.log('📍 Benutzer hat Standortfreigabe akzeptiert');
+        // Button-Text ändern während Suche
+        const btn = document.getElementById('find-defi');
+        const originalText = btn.textContent;
+        btn.textContent = 'Suche Standort...';
+        btn.disabled = true;
+        
+        getUserLocationForRouting(btn, originalText);
+    } else {
+        console.log('📍 Benutzer hat Standortfreigabe abgelehnt');
+        // Defi-Liste anzeigen oder Karte auf Wien Zentrum setzen
+        showDefiListPopup();
+    }
+}
+
+// ===============================
+// Standort für Routenberechnung abrufen
+// ===============================
+function getUserLocationForRouting(button, originalButtonText) {
+    console.log('📍 Starte Standortabfrage für Routing...');
     
     // Alte Verfolgung stoppen
     if (positionWatchId) {
@@ -257,19 +277,15 @@ function getUserLocation() {
         positionWatchId = null;
     }
     
-    // Alten Marker entfernen
-    if (currentUserMarker) {
-        map.removeLayer(currentUserMarker);
-        currentUserMarker = null;
-    }
-    
-    let firstLocation = true;
-    
     function success(position) {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         
         console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        
+        // Button zurücksetzen
+        button.textContent = originalButtonText;
+        button.disabled = false;
         
         // Marker erstellen oder aktualisieren
         if (!currentUserMarker) {
@@ -278,40 +294,47 @@ function getUserLocation() {
             currentUserMarker.setLatLng([lat, lng]);
         }
         
-        // Bei erstem Standort Karte zentrieren
-        if (firstLocation) {
-            currentUserMarker.openPopup();
-            map.setView([lat, lng], 16, { animate: true });
-            firstLocation = false;
-            
-            // Erfolgsmeldung
-            showMessage('✅ Standort ermittelt - Optimale Routen sind jetzt möglich!', 'success');
-        }
+        // Karte auf Standort zentrieren
+        currentUserMarker.openPopup();
+        map.setView([lat, lng], 16, { animate: true });
         
         // Adresse ermitteln
         getSimpleAddress(lat, lng);
+        
+        // Erfolgsmeldung
+        showMessage('✅ Standort ermittelt! Berechne Route zum nächsten Defibrillator...', 'success');
+        
+        // Route berechnen (mit kurzer Verzögerung für bessere UX)
+        setTimeout(() => {
+            calculateRouteToNearestDefi();
+        }, 1000);
     }
     
     function error(err) {
         console.error('❌ Standortfehler:', err);
         
+        // Button zurücksetzen
+        button.textContent = originalButtonText;
+        button.disabled = false;
+        
         let errorMessage = "Standort konnte nicht ermittelt werden.";
         if (err.code === err.PERMISSION_DENIED) {
-            errorMessage = "Standort-Zugriff wurde verweigert. Sie können dies in den Browsereinstellungen ändern.";
+            errorMessage = "Standort-Zugriff wurde verweigert.";
         } else if (err.code === err.TIMEOUT) {
             errorMessage = "Standortabfrage hat zu lange gedauert.";
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-            errorMessage = "Standortinformationen sind nicht verfügbar.";
         }
         
         showMessage(errorMessage, 'error');
         
-        // Fallback auf Wien Zentrum
+        // Fallback: Defi-Liste anzeigen
+        showDefiListPopup();
+        
+        // Fallback-Standort setzen
         setDefaultLocation();
     }
     
-    // Standort mit hoher Genauigkeit abrufen
-    positionWatchId = navigator.geolocation.watchPosition(
+    // Standort abfragen (einmalig für die Routenberechnung)
+    navigator.geolocation.getCurrentPosition(
         success,
         error,
         {
@@ -320,12 +343,80 @@ function getUserLocation() {
             maximumAge: 0
         }
     );
+}
+
+// ===============================
+// Route zum nächsten Defi berechnen
+// ===============================
+function calculateRouteToNearestDefi() {
+    if (!currentUserMarker) {
+        showMessage('Standort nicht verfügbar.', 'error');
+        return;
+    }
     
-    // Einmalige Abfrage als Fallback
-    navigator.geolocation.getCurrentPosition(success, error, {
-        enableHighAccuracy: true,
-        timeout: 10000
-    });
+    if (!defiList || defiList.length === 0) {
+        showMessage('Keine Defis verfügbar.', 'warning');
+        return;
+    }
+    
+    const userPos = currentUserMarker.getLatLng();
+    const nearest = findNearestDefi(userPos.lat, userPos.lng);
+    
+    if (!nearest) {
+        showMessage('Keinen Defibrillator in der Nähe gefunden.', 'warning');
+        return;
+    }
+    
+    // Alte Route entfernen
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+    
+    // Neue Route berechnen
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(userPos.lat, userPos.lng),
+            L.latLng(nearest.latitude, nearest.longitude)
+        ],
+        routeWhileDragging: false,
+        showAlternatives: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+        lineOptions: {
+            styles: [{
+                color: '#0e6127',
+                weight: 6,
+                opacity: 0.8
+            }]
+        },
+        createMarker: function() { return null; }
+    }).addTo(map);
+    
+    // Distanz berechnen und anzeigen
+    const distance = map.distance([userPos.lat, userPos.lng], [nearest.latitude, nearest.longitude]);
+    const distanceKm = (distance / 1000).toFixed(2);
+    
+    // Erfolgsmeldung mit Details
+    showMessage(
+        `🚑 Route zum nächsten Defibrillator gefunden!<br>
+        📍 ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
+        📏 Entfernung: ${Math.round(distance)}m (${distanceKm}km)`, 
+        'success'
+    );
+    
+    // Ziel-Marker hervorheben
+    setTimeout(() => {
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker && 
+                layer.getLatLng().lat === nearest.latitude && 
+                layer.getLatLng().lng === nearest.longitude) {
+                layer.openPopup();
+            }
+        });
+    }, 500);
 }
 
 // ===============================
@@ -347,7 +438,7 @@ function createUserMarker(lat, lng) {
                 📍 Ihr aktueller Standort
             </h4>
             <div style="font-size: 14px;">
-                Adresse wird ermittelt...
+                Route wird berechnet...
             </div>
         </div>
     `);
@@ -373,18 +464,72 @@ function setDefaultLocation() {
                 Wien Zentrum (Fallback)<br>
                 1010 Wien
             </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                Tipp: Klicken Sie auf "Standort teilen" für Ihren aktuellen Standort
-            </div>
         </div>
-    `).openPopup();
+    `);
     
     // Karte auf Wien Zentrum setzen
     map.setView([48.2082, 16.3738], 14);
 }
 
 // ===============================
-// MANUELLE STANDFORTABFRAGE (für Button)
+// Nächsten Defi finden (Helper-Funktion)
+// ===============================
+function findNearestDefi(lat, lng) {
+    if (!defiList || defiList.length === 0) {
+        return null;
+    }
+    
+    let nearest = null;
+    let minDist = Infinity;
+    
+    defiList.forEach(defi => {
+        const dist = map.distance([lat, lng], [defi.latitude, defi.longitude]);
+        if (dist < minDist) {
+            minDist = dist;
+            nearest = defi;
+        }
+    });
+    
+    if (nearest) {
+        console.log(`📍 Nächster Defi: ${nearest.adresse.straße} ${nearest.adresse.hausnummer} (${Math.round(minDist)}m)`);
+    }
+    
+    return nearest;
+}
+
+// ===============================
+// Defi-Liste als Popup anzeigen (wenn kein Standort)
+// ===============================
+function showDefiListPopup() {
+    // Einfache Liste der verfügbaren Defis
+    let defiListHTML = '<div style="font-family: Arial; max-height: 300px; overflow-y: auto;">';
+    defiListHTML += '<h3 style="margin: 0 0 10px 0; color: #d63031;">Verfügbare Defibrillatoren</h3>';
+    
+    defiList.slice(0, 10).forEach((defi, index) => {
+        defiListHTML += `
+            <div style="padding: 8px; border-bottom: 1px solid #eee; font-size: 14px;">
+                <strong>${index + 1}. ${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
+                <span style="color: #666; font-size: 13px;">
+                    ${defi.adresse.plz} ${defi.adresse.stadt}<br>
+                    ${defi.zusatzinfo || ''}
+                </span>
+            </div>
+        `;
+    });
+    
+    defiListHTML += '</div>';
+    
+    // Popup in der Mitte der Karte anzeigen
+    L.popup()
+        .setLatLng(map.getCenter())
+        .setContent(defiListHTML)
+        .openOn(map);
+    
+    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info');
+}
+
+// ===============================
+// MANUELLE STANDFORTABFRAGE (für separaten Button)
 // ===============================
 function geoFindMe() {
     console.log('📍 Manuelle Standortanfrage');
@@ -453,7 +598,7 @@ function geoFindMe() {
         
         let errorMessage = "Standort konnte nicht ermittelt werden.";
         if (err.code === err.PERMISSION_DENIED) {
-            errorMessage = "Standort-Zugriff wurde verweigert. Bitte erlauben Sie den Zugriff in den Browsereinstellungen.";
+            errorMessage = "Standort-Zugriff wurde verweigert.";
         }
         
         showMessage(errorMessage, 'error');
@@ -519,9 +664,6 @@ function getSimpleAddress(lat, lng) {
                     <div style="font-size: 14px; line-height: 1.4;">
                         ${addressText}
                     </div>
-                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
-                        Für optimale Routenberechnung
-                    </div>
                 </div>
             `);
         })
@@ -541,110 +683,28 @@ function getSimpleAddress(lat, lng) {
 }
 
 // ===============================
-// Nächsten Defi finden
-// ===============================
-function findNearestDefi(lat, lng) {
-    if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning');
-        return null;
-    }
-    
-    let nearest = null;
-    let minDist = Infinity;
-    
-    defiList.forEach(defi => {
-        const dist = map.distance([lat, lng], [defi.latitude, defi.longitude]);
-        if (dist < minDist) {
-            minDist = dist;
-            nearest = defi;
-        }
-    });
-    
-    if (nearest) {
-        console.log(`📍 Nächster Defi: ${nearest.adresse.straße} ${nearest.adresse.hausnummer} (${Math.round(minDist)}m)`);
-    }
-    
-    return nearest;
-}
-
-// ===============================
-// Route zum nächsten Defi
-// ===============================
-function routeToNearestDefi() {
-    if (!currentUserMarker) {
-        askForLocationPermission();
-        showMessage('Bitte erlauben Sie zuerst den Standortzugriff für die Routenberechnung.', 'info');
-        return;
-    }
-    
-    if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning');
-        return;
-    }
-    
-    const userPos = currentUserMarker.getLatLng();
-    const nearest = findNearestDefi(userPos.lat, userPos.lng);
-    
-    if (!nearest) {
-        showMessage('Keinen Defi in der Nähe gefunden.', 'warning');
-        return;
-    }
-    
-    // Alte Route entfernen
-    if (routingControl) {
-        map.removeControl(routingControl);
-        routingControl = null;
-    }
-    
-    // Neue Route berechnen
-    routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(userPos.lat, userPos.lng),
-            L.latLng(nearest.latitude, nearest.longitude)
-        ],
-        routeWhileDragging: false,
-        showAlternatives: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        fitSelectedRoutes: true,
-        show: false,
-        lineOptions: {
-            styles: [{
-                color: '#0e6127',
-                weight: 6,
-                opacity: 0.8
-            }]
-        },
-        createMarker: function() { return null; }
-    }).addTo(map);
-    
-    // Distanz anzeigen
-    const distance = map.distance([userPos.lat, userPos.lng], [nearest.latitude, nearest.longitude]);
-    const distanceKm = (distance / 1000).toFixed(2);
-    
-    showMessage(`🚑 Route zum nächsten Defi (${Math.round(distance)}m, ${distanceKm}km)`, 'success');
-    
-    // Ziel-Marker hervorheben
-    setTimeout(() => {
-        map.eachLayer(layer => {
-            if (layer instanceof L.Marker && 
-                layer.getLatLng().lat === nearest.latitude && 
-                layer.getLatLng().lng === nearest.longitude) {
-                layer.openPopup();
-            }
-        });
-    }, 500);
-}
-
-// ===============================
 // Nachricht anzeigen
 // ===============================
 function showMessage(text, type = 'info') {
     console.log(`${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'} ${text}`);
     
-    // Kleine Notification (optional)
-    if (typeof alert !== 'undefined' && type === 'error') {
-        setTimeout(() => alert(text), 100);
+    // Für wichtige Meldungen ein Toast/Alert anzeigen
+    if (type === 'success' || type === 'error') {
+        // Temporäre Meldung als Popup in der Karte
+        const popup = L.popup()
+            .setLatLng(map.getCenter())
+            .setContent(`
+                <div style="font-family: Arial; padding: 10px; background: ${type === 'success' ? '#d4edda' : '#f8d7da'}; 
+                         color: ${type === 'success' ? '#155724' : '#721c24'}; border-radius: 4px;">
+                    ${type === 'success' ? '✅' : '❌'} ${text}
+                </div>
+            `)
+            .openOn(map);
+        
+        // Popup nach 5 Sekunden automatisch schließen
+        setTimeout(() => {
+            map.closePopup(popup);
+        }, 5000);
     }
 }
 
@@ -653,18 +713,29 @@ function showMessage(text, type = 'info') {
 // ===============================
 function routeToDefi(defi) {
     if (!currentUserMarker) {
+        // Wenn kein Standort, zuerst fragen
         const ok = confirm(
-            'Ihr Standort ist nicht bekannt.\n\n' +
-            'Möchten Sie zuerst Ihren Standort ermitteln?'
+            'Um eine Route zu berechnen, benötigen wir Ihren Standort.\n\n' +
+            'Möchten Sie Ihren Standort jetzt teilen?'
         );
         if (ok) {
-            geoFindMe();
+            // Temporären Button simulieren
+            const tempBtn = { textContent: '', disabled: false };
+            getUserLocationForRouting(tempBtn, '', () => {
+                // Callback: Nach Standortermittlung Route berechnen
+                const userPos = currentUserMarker.getLatLng();
+                createRouteToDefi(userPos, defi);
+            });
         }
         return;
     }
 
     const userPos = currentUserMarker.getLatLng();
+    createRouteToDefi(userPos, defi);
+}
 
+// Hilfsfunktion für Route zu spezifischem Defi
+function createRouteToDefi(userPos, defi) {
     if (routingControl) {
         map.removeControl(routingControl);
         routingControl = null;
@@ -695,7 +766,7 @@ function routeToDefi(defi) {
     );
 
     showMessage(
-        `🚑 Route zum Defibrillator (${Math.round(distance)} m)`,
+        `🚑 Route zum Defibrillator berechnet (${Math.round(distance)} m)`,
         'success'
     );
 }
@@ -710,12 +781,9 @@ function initApp() {
     // Defis laden
     loadDefiData();
     
-    // Event Listener für Buttons
+    // Event Listener
     document.getElementById('find-me').addEventListener('click', geoFindMe);
-    document.getElementById('find-defi').addEventListener('click', routeToNearestDefi);
-    
-    // Automatische Standortabfrage starten (nach kurzer Verzögerung)
-    askForLocationPermission();
+    document.getElementById('find-defi').addEventListener('click', findAndRouteToNearestDefi);
     
     // Für GitHub Pages: HTTPS erzwingen
     if (window.location.hostname.includes('github.io') && 
