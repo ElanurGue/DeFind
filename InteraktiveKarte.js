@@ -64,8 +64,6 @@ async function loadDefiData() {
             // Defis auf Karte anzeigen
             displayDefisOnMap();
             
-            // Erfolgsmeldung
-            showMessage(`✅ ${defiList.length} Defibrillatoren geladen`, 'success');
         } else {
             throw new Error('API returned success: false');
         }
@@ -244,7 +242,6 @@ function askForLocationAndFindDefi() {
         'Um den nächstgelegenen Defibrillator zu finden, benötigen wir Ihren aktuellen Standort.\n\n' +
         '• Ihre Daten werden nicht gespeichert\n' +
         '• Nur für die Routenberechnung verwendet\n' +
-        '• Sie können auch ohne Standort fortfahren\n\n' +
         'OK = Standort teilen und Route berechnen\n' +
         'Abbrechen = Ohne Standort fortfahren'
     );
@@ -302,9 +299,6 @@ function getUserLocationForRouting(button, originalButtonText) {
         
         // Adresse ermitteln
         getSimpleAddress(lat, lng);
-        
-        // Erfolgsmeldung
-        showMessage('✅ Standort ermittelt! Berechne Route zum nächsten Defibrillator...', 'success');
         
         // Route berechnen (mit kurzer Verzögerung für bessere UX)
         setTimeout(() => {
