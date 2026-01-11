@@ -253,8 +253,8 @@ function geoFindMe() {
         if (!currentUserMarker) {
             currentUserMarker = L.circleMarker([lat, lng], {
                 radius: 10,
-                color: '#1a5fb4',
-                fillColor: '#62a0ea',
+                color: '#3b5d26',
+                fillColor: '#B8C59C',
                 fillOpacity: 0.9,
                 weight: 3
             }).addTo(map);
@@ -497,7 +497,7 @@ function routeToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127',
+                color: '#28668d',
                 weight: 6,
                 opacity: 0.8
             }]
@@ -591,7 +591,7 @@ function routeToDefi(defi) {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127',
+                color: '#28668d',
                 weight: 6,
                 opacity: 0.8
             }]
