@@ -290,8 +290,8 @@ function getUserLocationForRouting(button, originalButtonText) {
         if (!currentUserMarker) {
             currentUserMarker = L.circleMarker([lat, lng], {
                 radius: 10,
-                color: '#3B5D26',
-                fillColor: '#6B8F3D',
+                color: '#1a5fb4',
+                fillColor: '#62a0ea',
                 fillOpacity: 0.9,
                 weight: 3
             }).addTo(map);
@@ -403,7 +403,7 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#1a5fb4',
+                color: '#28668d',
                 weight: 6,
                 opacity: 0.8
             }]

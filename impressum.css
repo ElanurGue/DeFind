@@ -48,3 +48,15 @@
     opacity: 0.8;
     text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+    .impressum-container {
+        padding: 1rem;
+    }
+
+    .impressum-container h1 {
+        font-size: 1.5em;
+        padding: 0.4rem 0.8rem;
+    }
+    
+}
