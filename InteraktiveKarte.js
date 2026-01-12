@@ -120,7 +120,7 @@ function displayDefisOnMap() {
                     "
                     onclick="routeToDefi(${JSON.stringify(defi).replace(/"/g, '&quot;')})"
                 >
-                    🚑 Route zum Defi
+                    🚑 Route zum Defi erstellen
                 </button>
             </div>
         `);
@@ -288,25 +288,7 @@ function getUserLocationForRouting(button, originalButtonText) {
         
         // Marker erstellen oder aktualisieren
         if (!currentUserMarker) {
-            currentUserMarker = L.circleMarker([lat, lng], {
-                radius: 10,
-                color: '#3B5D26',
-                fillColor: '#6B8F3D',
-                fillOpacity: 0.9,
-                weight: 3
-            }).addTo(map);
-            
-            // ZUERST einfaches Popup
-            currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
-                    </h4>
-                    <div style="font-size: 14px;">
-                        Adresse wird ermittelt...
-                    </div>
-                </div>
-            `);
+            createUserMarker(lat, lng);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
@@ -403,7 +385,7 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#1a5fb4',
+                color: '#0e6127',
                 weight: 6,
                 opacity: 0.8
             }]
@@ -545,6 +527,85 @@ function showDefiListPopup() {
 }
 
 // ===============================
+// MANUELLE STANDFORTABFRAGE (für Defi-Popup-Buttons)
+// ===============================
+function geoFindMeForDefi(callback) {
+    console.log('📍 Standortanfrage für spezifischen Defi');
+    
+    if (!navigator.geolocation) {
+        alert("Ihr Browser unterstützt keine Standortabfrage.");
+        return;
+    }
+    
+    // User-freundliche Abfrage
+    const userResponse = confirm(
+        'DeFind - Route zum Defibrillator\n\n' +
+        'Um eine Route zu berechnen, benötigen wir Ihren aktuellen Standort.\n\n' +
+        'Möchten Sie Ihren Standort jetzt teilen?'
+    );
+    
+    if (!userResponse) {
+        showMessage('Route kann ohne Standort nicht berechnet werden.', 'warning');
+        return;
+    }
+    
+    // Alte Verfolgung stoppen
+    if (positionWatchId) {
+        navigator.geolocation.clearWatch(positionWatchId);
+        positionWatchId = null;
+    }
+    
+    function success(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        console.log(`📍 Standort für Defi-Route: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        
+        // Marker erstellen oder aktualisieren
+        if (!currentUserMarker) {
+            createUserMarker(lat, lng);
+        } else {
+            currentUserMarker.setLatLng([lat, lng]);
+        }
+        
+        // Karte auf Standort zentrieren
+        currentUserMarker.openPopup();
+        map.setView([lat, lng], 16, { animate: true });
+        
+        // Adresse ermitteln
+        getSimpleAddress(lat, lng);
+        
+        // Erfolgsmeldung
+        showMessage('✅ Standort ermittelt!', 'success');
+        
+        // Callback aufrufen (für die spezifische Defi-Route)
+        if (callback && typeof callback === 'function') {
+            callback(lat, lng);
+        }
+    }
+    
+    function error(err) {
+        console.error('❌ Standortfehler:', err);
+        
+        let errorMessage = "Standort konnte nicht ermittelt werden.";
+        if (err.code === err.PERMISSION_DENIED) {
+            errorMessage = "Standort-Zugriff wurde verweigert.";
+        }
+        
+        showMessage(errorMessage, 'error');
+        
+        // Fallback-Standort setzen
+        setDefaultLocation();
+    }
+    
+    // Standort abfragen
+    navigator.geolocation.getCurrentPosition(success, error, {
+        enableHighAccuracy: true,
+        timeout: 10000
+    });
+}
+
+// ===============================
 // EINFACHE ADRESSE ANZEIGEN
 // ===============================
 function getSimpleAddress(lat, lng) {
@@ -644,72 +705,11 @@ function showMessage(text, type = 'info') {
 function routeToDefi(defi) {
     // Wenn kein Standort vorhanden, zuerst fragen
     if (!currentUserMarker) {
-        // User-freundliche Abfrage für spezifischen Defi
-        const userResponse = confirm(
-            'DeFind - Route zum Defibrillator\n\n' +
-            'Um eine Route zu berechnen, benötigen wir Ihren aktuellen Standort.\n\n' +
-            'Möchten Sie Ihren Standort jetzt teilen?'
-        );
-        
-        if (!userResponse) {
-            showMessage('Route kann ohne Standort nicht berechnet werden.', 'warning');
-            return;
-        }
-        
-        // Alte Verfolgung stoppen
-        if (positionWatchId) {
-            navigator.geolocation.clearWatch(positionWatchId);
-            positionWatchId = null;
-        }
-        
-        // Standort abfragen
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                console.log(`📍 Standort für Defi-Route: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-                
-                // Marker erstellen oder aktualisieren
-                if (!currentUserMarker) {
-                    createUserMarker(lat, lng);
-                } else {
-                    currentUserMarker.setLatLng([lat, lng]);
-                }
-                
-                // Karte auf Standort zentrieren
-                currentUserMarker.openPopup();
-                map.setView([lat, lng], 16, { animate: true });
-                
-                // Adresse ermitteln
-                getSimpleAddress(lat, lng);
-                
-                // Erfolgsmeldung
-                showMessage('✅ Standort ermittelt!', 'success');
-                
-                // Route berechnen
-                setTimeout(() => {
-                    createRouteToDefi({ lat, lng }, defi);
-                }, 1000);
-            },
-            function(err) {
-                console.error('❌ Standortfehler:', err);
-                
-                let errorMessage = "Standort konnte nicht ermittelt werden.";
-                if (err.code === err.PERMISSION_DENIED) {
-                    errorMessage = "Standort-Zugriff wurde verweigert.";
-                }
-                
-                showMessage(errorMessage, 'error');
-                
-                // Fallback-Standort setzen
-                setDefaultLocation();
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000
-            }
-        );
+        geoFindMeForDefi((lat, lng) => {
+            // Nach Standortermittlung Route berechnen
+            const userPos = { lat, lng };
+            createRouteToDefi(userPos, defi);
+        });
         return;
     }
 
@@ -737,7 +737,7 @@ function createRouteToDefi(userPos, defi) {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#28668d',
+                color: '#0e6127',
                 weight: 6,
                 opacity: 0.8
             }]
@@ -803,4 +803,4 @@ window.debugDefis = function() {
 window.reloadDefis = function() {
     console.log('🔄 Defis neu laden');
     loadDefiData();
-};
+}; 
