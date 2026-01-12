@@ -288,7 +288,25 @@ function getUserLocationForRouting(button, originalButtonText) {
         
         // Marker erstellen oder aktualisieren
         if (!currentUserMarker) {
-            createUserMarker(lat, lng);
+            currentUserMarker = L.circleMarker([lat, lng], {
+                radius: 10,
+                color: '#3B5D26',
+                fillColor: '#6B8F3D',
+                fillOpacity: 0.9,
+                weight: 3
+            }).addTo(map);
+            
+            // ZUERST einfaches Popup
+            currentUserMarker.bindPopup(`
+                <div style="font-family: Arial; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
+                        📍 Ihr Standort
+                    </h4>
+                    <div style="font-size: 14px;">
+                        Adresse wird ermittelt...
+                    </div>
+                </div>
+            `);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
@@ -385,7 +403,7 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127',
+                color: '#1a5fb4',
                 weight: 6,
                 opacity: 0.8
             }]
@@ -719,7 +737,7 @@ function createRouteToDefi(userPos, defi) {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127',
+                color: '#28668d',
                 weight: 6,
                 opacity: 0.8
             }]
