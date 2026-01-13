@@ -1001,4 +1001,200 @@ function addPulsingAnimation() {
 // ===============================
 function initApp() {
     console.log('🚀 DeFind App wird gestartet');
-    console.log('🔗
+    console.log('🔗 API:', RAILWAY_API);
+    
+    // CSS-Animationen hinzufügen
+    addPulsingAnimation();
+    
+    // Defis laden
+    loadDefiData();
+    
+    // Event Listener für den "find-defi" Button
+    const findDefiBtn = document.getElementById('find-defi');
+    if (findDefiBtn) {
+        findDefiBtn.addEventListener('click', findAndRouteToNearestDefi);
+    } else {
+        console.error('❌ Button "find-defi" nicht gefunden!');
+    }
+    
+    // Für GitHub Pages: HTTPS erzwingen
+    if (window.location.hostname.includes('github.io') && 
+        window.location.protocol !== 'https:') {
+        console.log('🔄 Wechsel zu HTTPS');
+        window.location.href = window.location.href.replace('http:', 'https:');
+    }
+    
+    // Event Listener für Karten-Klick, um Live-Tracking zu stoppen
+    map.on('click', function() {
+        if (isLiveTracking) {
+            currentUserMarker.openPopup();
+        }
+    });
+    
+    console.log('✅ App initialisiert');
+}
+
+// ===============================
+// DOM Ready
+// ===============================
+document.addEventListener('DOMContentLoaded', initApp);
+
+// ===============================
+// Fehlende Funktionen hinzufügen
+// ===============================
+
+// ===============================
+// Defi-Liste als Popup anzeigen (wenn kein Standort)
+// ===============================
+function showDefiListPopup() {
+    if (!defiList || defiList.length === 0) {
+        showMessage('Keine Defis verfügbar.', 'warning');
+        return;
+    }
+    
+    // Einfache Liste der verfügbaren Defis
+    let defiListHTML = '<div style="font-family: Arial; max-height: 300px; overflow-y: auto;">';
+    defiListHTML += '<h3 style="margin: 0 0 10px 0; color: #d63031;">Verfügbare Defibrillatoren</h3>';
+    
+    defiList.slice(0, 10).forEach((defi, index) => {
+        defiListHTML += `
+            <div style="padding: 8px; border-bottom: 1px solid #eee; font-size: 14px;">
+                <strong>${index + 1}. ${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
+                <span style="color: #666; font-size: 13px;">
+                    ${defi.adresse.plz} ${defi.adresse.stadt}<br>
+                    ${defi.zusatzinfo || ''}
+                </span>
+            </div>
+        `;
+    });
+    
+    defiListHTML += '</div>';
+    
+    // Popup in der Mitte der Karte anzeigen
+    L.popup()
+        .setLatLng(map.getCenter())
+        .setContent(defiListHTML)
+        .openOn(map);
+    
+    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info');
+}
+
+// ===============================
+// Standort-Marker erstellen
+// ===============================
+function createUserMarker(lat, lng) {
+    if (currentUserMarker) {
+        map.removeLayer(currentUserMarker);
+    }
+    
+    currentUserMarker = L.circleMarker([lat, lng], {
+        radius: 6, // Kleinerer blauer Punkt
+        color: '#1a73e8',
+        fillColor: '#4285f4',
+        fillOpacity: 0.9,
+        weight: 2,
+        className: 'user-live-marker'
+    }).addTo(map);
+    
+    // Temporäres Popup
+    currentUserMarker.bindPopup(`
+        <div style="font-family: Arial; min-width: 200px;">
+            <h4 style="margin: 0 0 8px 0; color: #1a73e8; font-size: 16px;">
+                📍 Ihr aktueller Standort
+            </h4>
+            <div style="font-size: 14px;">
+                Route wird berechnet...
+            </div>
+        </div>
+    `);
+}
+
+// ===============================
+// Default-Standort (Wien Zentrum)
+// ===============================
+function setDefaultLocation() {
+    console.log('📍 Verwende Default-Standort (Wien Zentrum)');
+    
+    if (currentUserMarker) {
+        map.removeLayer(currentUserMarker);
+    }
+    
+    currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
+    currentUserMarker.bindPopup(`
+        <div style="font-family: Arial; min-width: 200px;">
+            <h4 style="margin: 0 0 8px 0; color: #1a73e8; font-size: 16px;">
+                📍 Standort nicht verfügbar
+            </h4>
+            <div style="font-size: 14px;">
+                Wien Zentrum (Fallback)<br>
+                1010 Wien
+            </div>
+        </div>
+    `);
+    
+    // Karte auf Wien Zentrum setzen
+    map.setView([48.2082, 16.3738], 14);
+}
+
+// ===============================
+// Debug-Funktionen (in Console)
+// ===============================
+window.debugDefis = function() {
+    console.log('🔍 DEBUG:');
+    console.log('Defis:', defiList);
+    console.log('API:', RAILWAY_API);
+    console.log('Karten-Center:', map.getCenter());
+    console.log('Standort-Marker:', currentUserMarker ? 'Ja' : 'Nein');
+    console.log('Live-Tracking:', isLiveTracking ? 'Aktiv' : 'Inaktiv');
+    console.log('Aktuelles Ziel:', currentDefiTarget);
+};
+
+window.reloadDefis = function() {
+    console.log('🔄 Defis neu laden');
+    loadDefiData();
+};
+
+window.stopTracking = function() {
+    stopLiveTracking();
+    console.log('🛑 Live-Tracking gestoppt');
+};
+
+window.showCurrentPosition = function() {
+    if (currentUserMarker) {
+        const pos = currentUserMarker.getLatLng();
+        console.log('📍 Aktuelle Position:', pos.lat.toFixed(6), pos.lng.toFixed(6));
+        map.setView([pos.lat, pos.lng], 17);
+        currentUserMarker.openPopup();
+    } else {
+        console.log('❌ Kein Standort verfügbar');
+    }
+};
+
+// ===============================
+// Fehlerbehandlung für fehlende Leaflet Routing Machine
+// ===============================
+if (typeof L.Routing === 'undefined') {
+    console.error('❌ Leaflet Routing Machine nicht geladen!');
+    console.log('ℹ️ Stelle sicher, dass du folgende Skripte in deinem HTML hast:');
+    console.log('<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />');
+    console.log('<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>');
+    
+    // Fallback-Funktionen
+    window.routeToDefi = function(defi) {
+        alert('Routing-Funktion nicht verfügbar. Bitte Routing Machine Bibliothek laden.');
+    };
+    
+    // Überschreibe die calculateRouteToNearestDefi Funktion mit Fallback
+    const originalCalculateRoute = window.calculateRouteToNearestDefi;
+    window.calculateRouteToNearestDefi = function() {
+        if (typeof L.Routing === 'undefined') {
+            alert('🚧 Routing-Funktion temporär nicht verfügbar.\n\nBitte laden Sie die Seite neu oder verwenden Sie die direkte Ansicht.');
+            return;
+        }
+        if (originalCalculateRoute) {
+            originalCalculateRoute();
+        }
+    };
+}
+
+console.log('✅ JS InteraktiveKarte.js komplett geladen');
