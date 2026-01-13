@@ -18,6 +18,8 @@ let defiList = [];
 let routingControl = null;
 let currentUserMarker = null;
 let positionWatchId = null;
+let isLiveTracking = false;
+let currentDefiTarget = null;
 
 // ===============================
 // Icons
@@ -33,6 +35,15 @@ const heartIcon = L.icon({
 // RAILWAY API KONFIGURATION
 // ===============================
 const RAILWAY_API = 'https://defind-production.up.railway.app/api/standorte';
+
+// ===============================
+// OSRM Routing Service für Fußgänger
+// ===============================
+const routingService = L.Routing.osrmv1({
+    serviceUrl: 'https://router.project-osrm.org/route/v1',
+    profile: 'foot', // Fußgänger-Routen
+    timeout: 10000
+});
 
 // ===============================
 // Defi-Daten von Railway laden
@@ -120,7 +131,7 @@ function displayDefisOnMap() {
                     "
                     onclick="routeToDefi(${JSON.stringify(defi).replace(/"/g, '&quot;')})"
                 >
-                    🚑 Lead to Defi
+                    🚑 Führe zum Defi 
                 </button>
             </div>
         `);
@@ -215,8 +226,14 @@ function findAndRouteToNearestDefi() {
     }
     
     // Wenn schon ein Standort vorhanden ist, direkt Routen berechnen
-    if (currentUserMarker) {
+    if (currentUserMarker && !isLiveTracking) {
         calculateRouteToNearestDefi();
+        return;
+    }
+    
+    // Wenn Live-Tracking aktiv ist, fragen ob beendet werden soll
+    if (isLiveTracking) {
+        stopLiveTracking();
         return;
     }
     
@@ -242,6 +259,7 @@ function askForLocationAndFindDefi() {
         'Um den nächstgelegenen Defibrillator zu finden, benötigen wir Ihren aktuellen Standort.\n\n' +
         '• Ihre Daten werden nicht gespeichert\n' +
         '• Nur für die Routenberechnung verwendet\n' +
+        '• Ihre Position wird verfolgt, während Sie sich bewegen\n\n' +
         'OK = Standort teilen und Route berechnen\n' +
         'Abbrechen = Ohne Standort fortfahren'
     );
@@ -277,43 +295,48 @@ function getUserLocationForRouting(button, originalButtonText) {
     function success(position) {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
         
-        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        console.log(`📍 Standort gefunden: ${lat.toFixed(6)}, ${lng.toFixed(6)} (Genauigkeit: ${Math.round(accuracy)}m)`);
         
         // Button zurücksetzen
         if (button) {
-            button.textContent = originalButtonText;
+            button.textContent = 'Live-Tracking stoppen';
             button.disabled = false;
         }
         
         // Marker erstellen oder aktualisieren
         if (!currentUserMarker) {
+            // KLEINERER blauer Punkt für den Live-Standort
             currentUserMarker = L.circleMarker([lat, lng], {
-                radius: 10,
-                color: '#1a5fb4',
-                fillColor: '#62a0ea',
+                radius: 6, // REDUZIERT von 10 auf 6
+                color: '#1a73e8',
+                fillColor: '#4285f4',
                 fillOpacity: 0.9,
-                weight: 3
+                weight: 2,
+                className: 'user-live-marker'
             }).addTo(map);
-            
-            // ZUERST einfaches Popup
-            currentUserMarker.bindPopup(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
-                    </h4>
-                    <div style="font-size: 14px;">
-                        Adresse wird ermittelt...
-                    </div>
-                </div>
-            `);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
         
+        // Genauigkeitskreis (optional)
+        if (accuracy < 100) { // Nur anzeigen wenn Genauigkeit ok
+            L.circle([lat, lng], {
+                radius: accuracy,
+                color: '#1a73e8',
+                fillColor: '#4285f4',
+                fillOpacity: 0.1,
+                weight: 1
+            }).addTo(map).bindTooltip(`Genauigkeit: ${Math.round(accuracy)}m`);
+        }
+        
+        // Popup für Live-Standort
+        updateUserMarkerPopup(lat, lng);
+        
         // Karte auf Standort zentrieren
         currentUserMarker.openPopup();
-        map.setView([lat, lng], 16, { animate: true });
+        map.setView([lat, lng], 17, { animate: true });
         
         // Adresse ermitteln
         getSimpleAddress(lat, lng);
@@ -321,7 +344,10 @@ function getUserLocationForRouting(button, originalButtonText) {
         // Route berechnen (mit kurzer Verzögerung für bessere UX)
         setTimeout(() => {
             calculateRouteToNearestDefi();
-        }, 1000);
+        }, 500);
+        
+        // Live-Tracking starten
+        startLiveTracking();
     }
     
     function error(err) {
@@ -354,15 +380,95 @@ function getUserLocationForRouting(button, originalButtonText) {
         success,
         error,
         {
-            enableHighAccuracy: true,
-            timeout: 10000,
+            enableHighAccuracy: true, // Wichtig für Fußgänger-Navigation
+            timeout: 15000,
             maximumAge: 0
         }
     );
 }
 
 // ===============================
-// Route zum nächsten Defi berechnen
+// Live-Tracking starten
+// ===============================
+function startLiveTracking() {
+    if (positionWatchId) {
+        navigator.geolocation.clearWatch(positionWatchId);
+    }
+    
+    isLiveTracking = true;
+    
+    positionWatchId = navigator.geolocation.watchPosition(
+        function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            console.log(`📍 Live-Update: ${lat.toFixed(6)}, ${lng.toFixed(6)} (${Math.round(accuracy)}m)`);
+            
+            if (currentUserMarker) {
+                // Sanfte Animation der Bewegungen
+                currentUserMarker.setLatLng([lat, lng]);
+                
+                // Karte langsam folgen lassen (nicht bei jedem kleinen Schritt zentrieren)
+                if (!map.getBounds().contains([lat, lng])) {
+                    map.panTo([lat, lng], {
+                        animate: true,
+                        duration: 1.0
+                    });
+                }
+                
+                // Popup aktualisieren
+                updateUserMarkerPopup(lat, lng);
+                
+                // Wenn eine Route aktiv ist, könnte man hier die Route neu berechnen lassen
+                // (optional - kann Performance beeinträchtigen)
+                if (routingControl && currentDefiTarget) {
+                    // Route automatisch aktualisieren wenn man zu weit abweicht
+                    const userPos = currentUserMarker.getLatLng();
+                    const distanceToRoute = calculateDistanceToRoute(userPos);
+                    
+                    if (distanceToRoute > 50) { // Wenn mehr als 50m von der Route entfernt
+                        console.log('⚠️ Zu weit von Route entfernt, berechne neu...');
+                        recalculateRoute(lat, lng);
+                    }
+                }
+            }
+        },
+        function(error) {
+            console.warn('⚠️ Live-Tracking Fehler:', error);
+            showMessage('Live-Tracking unterbrochen', 'warning');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 2000 // Aktuelle Daten für Fußgänger
+        }
+    );
+    
+    showMessage('✅ Live-Tracking aktiv. Ihre Position wird verfolgt.', 'success');
+}
+
+// ===============================
+// Live-Tracking stoppen
+// ===============================
+function stopLiveTracking() {
+    if (positionWatchId) {
+        navigator.geolocation.clearWatch(positionWatchId);
+        positionWatchId = null;
+    }
+    
+    isLiveTracking = false;
+    
+    const btn = document.getElementById('find-defi');
+    if (btn) {
+        btn.textContent = 'Finde den nächsten Defi';
+    }
+    
+    showMessage('Live-Tracking beendet.', 'info');
+}
+
+// ===============================
+// Route zum nächsten Defi berechnen (FÜR FUSGÄNGER)
 // ===============================
 function calculateRouteToNearestDefi() {
     if (!currentUserMarker) {
@@ -383,14 +489,19 @@ function calculateRouteToNearestDefi() {
         return;
     }
     
+    currentDefiTarget = nearest;
+    
     // Alte Route entfernen
     if (routingControl) {
         map.removeControl(routingControl);
         routingControl = null;
     }
     
-    // Neue Route berechnen
+    console.log(`📍 Berechne Fußgänger-Route zu Defi: ${nearest.adresse.straße} ${nearest.adresse.hausnummer}`);
+    
+    // Neue Route für Fußgänger berechnen
     routingControl = L.Routing.control({
+        router: routingService, // Fußgänger-Routing
         waypoints: [
             L.latLng(userPos.lat, userPos.lng),
             L.latLng(nearest.latitude, nearest.longitude)
@@ -403,88 +514,196 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#28668d',
-                weight: 6,
-                opacity: 0.8
+                color: '#0e6127', // Grün für Fußgänger
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10' // Gestrichelt für Fußgänger
             }]
         },
         createMarker: function() { return null; }
     }).addTo(map);
     
-    // Distanz berechnen und anzeigen
-    const distance = map.distance([userPos.lat, userPos.lng], [nearest.latitude, nearest.longitude]);
-    const distanceKm = (distance / 1000).toFixed(2);
+    // Event Listener für Routen-Load
+    routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (routes && routes.length > 0) {
+            const route = routes[0];
+            const distance = route.summary.totalDistance;
+            const time = Math.round(route.summary.totalTime / 60); // Minuten
+            
+            // Erfolgsmeldung mit Details
+            showMessage(
+                `🚶‍♂️ Fußgänger-Route gefunden!<br>
+                📍 ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
+                📏 Entfernung: ${Math.round(distance)}m<br>
+                ⏱️ Gehzeit: ca. ${time} Minuten`, 
+                'success'
+            );
+            
+            // Ziel-Marker hervorheben
+            highlightTargetDefi(nearest);
+        }
+    });
     
-    // Erfolgsmeldung mit Details
+    // Event Listener für Fehler
+    routingControl.on('routingerror', function(e) {
+        console.error('Routing Fehler:', e.error);
+        showMessage('Route konnte nicht berechnet werden. Versuche direkte Linie...', 'warning');
+        
+        // Fallback: Direkte Linie zeichnen
+        drawDirectRoute(userPos, nearest);
+    });
+}
+
+// ===============================
+// Route neu berechnen (wenn man abweicht)
+// ===============================
+function recalculateRoute(lat, lng) {
+    if (!currentDefiTarget) return;
+    
+    // Alte Route entfernen
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+    
+    // Neue Route berechnen
+    routingControl = L.Routing.control({
+        router: routingService,
+        waypoints: [
+            L.latLng(lat, lng),
+            L.latLng(currentDefiTarget.latitude, currentDefiTarget.longitude)
+        ],
+        routeWhileDragging: false,
+        showAlternatives: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+        lineOptions: {
+            styles: [{
+                color: '#0e6127',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            }]
+        },
+        createMarker: function() { return null; }
+    }).addTo(map);
+    
+    showMessage('Route wurde neu berechnet.', 'info');
+}
+
+// ===============================
+// Direkte Route zeichnen (Fallback)
+// ===============================
+function drawDirectRoute(userPos, defi) {
+    const directLine = L.polyline([
+        [userPos.lat, userPos.lng],
+        [defi.latitude, defi.longitude]
+    ], {
+        color: '#0e6127',
+        weight: 3,
+        opacity: 0.6,
+        dashArray: '5, 10'
+    }).addTo(map);
+    
+    // Distanz berechnen
+    const distance = map.distance([userPos.lat, userPos.lng], [defi.latitude, defi.longitude]);
+    
     showMessage(
-        `🚑 Route zum nächsten Defibrillator gefunden!<br>
-        📍 ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
-        📏 Entfernung: ${Math.round(distance)}m (${distanceKm}km)`, 
-        'success'
+        `⚠️ Direkte Route (keine Fußwege berücksichtigt)<br>
+        📏 Luftlinie: ${Math.round(distance)}m`, 
+        'warning'
     );
     
-    // Ziel-Marker hervorheben
+    // Als temporäre Route markieren
+    setTimeout(() => {
+        if (directLine) map.removeLayer(directLine);
+    }, 30000);
+}
+
+// ===============================
+// Ziel-Defi hervorheben
+// ===============================
+function highlightTargetDefi(defi) {
     setTimeout(() => {
         map.eachLayer(layer => {
             if (layer instanceof L.Marker && 
-                layer.getLatLng().lat === nearest.latitude && 
-                layer.getLatLng().lng === nearest.longitude) {
+                layer.getLatLng().lat === defi.latitude && 
+                layer.getLatLng().lng === defi.longitude) {
+                // Animationseffekt
                 layer.openPopup();
+                layer.setZIndexOffset(1000);
+                
+                // Pulsierender Effekt
+                const originalIcon = layer.options.icon;
+                const pulsingIcon = L.divIcon({
+                    html: `<div style="
+                        width: 40px;
+                        height: 40px;
+                        background-color: #ff4757;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        animation: pulse 1.5s infinite;
+                    ">
+                        <img src="bilder/heart.png" style="width: 24px; height: 24px;">
+                    </div>`,
+                    className: 'pulsing-marker',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                });
+                
+                layer.setIcon(pulsingIcon);
+                
+                // Nach 5 Sekunden zurück zu normal
+                setTimeout(() => {
+                    layer.setIcon(originalIcon);
+                }, 5000);
             }
         });
     }, 500);
 }
 
 // ===============================
-// Standort-Marker erstellen
+// Benutzer-Marker Popup aktualisieren
 // ===============================
-function createUserMarker(lat, lng) {
-    currentUserMarker = L.circleMarker([lat, lng], {
-        radius: 10,
-        color: '#1a5fb4',
-        fillColor: '#62a0ea',
-        fillOpacity: 0.9,
-        weight: 3
-    }).addTo(map);
+function updateUserMarkerPopup(lat, lng) {
+    if (!currentUserMarker) return;
     
-    // Temporäres Popup
-    currentUserMarker.bindPopup(`
-        <div style="font-family: Arial; min-width: 200px;">
-            <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                📍 Ihr aktueller Standort
+    const time = new Date().toLocaleTimeString();
+    const popupContent = `
+        <div style="font-family: Arial; min-width: 220px;">
+            <h4 style="margin: 0 0 8px 0; color: #1a73e8; font-size: 16px;">
+                📍 Ihr Live-Standort
             </h4>
-            <div style="font-size: 14px;">
-                Route wird berechnet...
+            <div style="font-size: 13px; line-height: 1.4; margin-bottom: 8px;">
+                <strong>🕒 ${time}</strong><br>
+                <span style="color: #666;">
+                    Lat: ${lat.toFixed(6)}<br>
+                    Lng: ${lng.toFixed(6)}
+                </span>
             </div>
+            ${currentDefiTarget ? `
+            <div style="background: #e8f5e9; padding: 6px; border-radius: 4px; font-size: 12px;">
+                🎯 Ziel: ${currentDefiTarget.adresse.straße} ${currentDefiTarget.adresse.hausnummer}
+            </div>
+            ` : ''}
         </div>
-    `);
+    `;
+    
+    currentUserMarker.bindPopup(popupContent);
 }
 
 // ===============================
-// Default-Standort (Wien Zentrum)
+// Distanz zur aktuellen Route berechnen
 // ===============================
-function setDefaultLocation() {
-    console.log('📍 Verwende Default-Standort (Wien Zentrum)');
-    
-    if (currentUserMarker) {
-        map.removeLayer(currentUserMarker);
-    }
-    
-    currentUserMarker = L.marker([48.2082, 16.3738]).addTo(map);
-    currentUserMarker.bindPopup(`
-        <div style="font-family: Arial; min-width: 200px;">
-            <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                📍 Standort nicht verfügbar
-            </h4>
-            <div style="font-size: 14px;">
-                Wien Zentrum (Fallback)<br>
-                1010 Wien
-            </div>
-        </div>
-    `);
-    
-    // Karte auf Wien Zentrum setzen
-    map.setView([48.2082, 16.3738], 14);
+function calculateDistanceToRoute(userPos) {
+    // Vereinfachte Berechnung - in einer vollständigen Implementierung
+    // würde man die tatsächliche Distanz zur Polyline berechnen
+    return 0;
 }
 
 // ===============================
@@ -514,34 +733,126 @@ function findNearestDefi(lat, lng) {
 }
 
 // ===============================
-// Defi-Liste als Popup anzeigen (wenn kein Standort)
+// EINFACHE ADRESSE ANZEIGEN
 // ===============================
-function showDefiListPopup() {
-    // Einfache Liste der verfügbaren Defis
-    let defiListHTML = '<div style="font-family: Arial; max-height: 300px; overflow-y: auto;">';
-    defiListHTML += '<h3 style="margin: 0 0 10px 0; color: #d63031;">Verfügbare Defibrillatoren</h3>';
+function getSimpleAddress(lat, lng) {
+    if (!currentUserMarker) return;
     
-    defiList.slice(0, 10).forEach((defi, index) => {
-        defiListHTML += `
-            <div style="padding: 8px; border-bottom: 1px solid #eee; font-size: 14px;">
-                <strong>${index + 1}. ${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
-                <span style="color: #666; font-size: 13px;">
-                    ${defi.adresse.plz} ${defi.adresse.stadt}<br>
-                    ${defi.zusatzinfo || ''}
-                </span>
-            </div>
-        `;
-    });
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data || !data.address) {
+                updateUserMarkerPopup(lat, lng);
+                return;
+            }
+            
+            const addr = data.address;
+            let street = addr.road || addr.pedestrian || addr.footway || '';
+            const number = addr.house_number ? ` ${addr.house_number}` : '';
+            const streetWithNumber = street ? `${street}${number}` : '';
+            let city = addr.city || addr.town || addr.village || '';
+            const postcode = addr.postcode || '';
+            
+            let addressText = '';
+            if (streetWithNumber) addressText += streetWithNumber;
+            if (postcode && city) {
+                if (addressText) addressText += '<br>';
+                addressText += `${postcode} ${city}`;
+            } else if (city) {
+                if (addressText) addressText += '<br>';
+                addressText += city;
+            }
+            
+            if (!addressText) addressText = 'Unbekannter Ort';
+            
+            // Popup mit Adresse aktualisieren
+            const time = new Date().toLocaleTimeString();
+            currentUserMarker.setPopupContent(`
+                <div style="font-family: Arial; min-width: 220px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1a73e8; font-size: 16px;">
+                        📍 Ihr Live-Standort
+                    </h4>
+                    <div style="font-size: 13px; line-height: 1.4; margin-bottom: 8px;">
+                        <strong>${addressText}</strong><br>
+                        <span style="color: #666;">🕒 ${time}</span>
+                    </div>
+                    ${currentDefiTarget ? `
+                    <div style="background: #e8f5e9; padding: 6px; border-radius: 4px; font-size: 12px;">
+                        🎯 Ziel: ${currentDefiTarget.adresse.straße} ${currentDefiTarget.adresse.hausnummer}
+                    </div>
+                    ` : ''}
+                </div>
+            `);
+        })
+        .catch(err => {
+            console.log('Adressermittlung fehlgeschlagen:', err);
+            updateUserMarkerPopup(lat, lng);
+        });
+}
+
+// ===============================
+// Popup Fenster, welche zu einem bestimmten Defi routen
+// ===============================
+function routeToDefi(defi) {
+    // Wenn kein Standort vorhanden, zuerst fragen
+    if (!currentUserMarker || !isLiveTracking) {
+        geoFindMeForDefi((lat, lng) => {
+            // Nach Standortermittlung Route berechnen
+            currentDefiTarget = defi;
+            createRouteToDefi({ lat, lng }, defi);
+        });
+        return;
+    }
+
+    const userPos = currentUserMarker.getLatLng();
+    currentDefiTarget = defi;
+    createRouteToDefi(userPos, defi);
+}
+
+// Hilfsfunktion für Route zu spezifischem Defi
+function createRouteToDefi(userPos, defi) {
+    // Alte Route entfernen
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+
+    // Neue Route für Fußgänger berechnen
+    routingControl = L.Routing.control({
+        router: routingService,
+        waypoints: [
+            L.latLng(userPos.lat, userPos.lng),
+            L.latLng(defi.latitude, defi.longitude)
+        ],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        show: false,
+        lineOptions: {
+            styles: [{
+                color: '#0e6127',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            }]
+        },
+        createMarker: () => null
+    }).addTo(map);
+
+    // Distanz berechnen
+    const distance = map.distance(
+        [userPos.lat, userPos.lng],
+        [defi.latitude, defi.longitude]
+    );
+
+    // Erfolgsmeldung
+    showMessage(
+        `🚶‍♂️ Fußgänger-Route zu ${defi.adresse.straße} ${defi.adresse.hausnummer} berechnet (${Math.round(distance)} m)`,
+        'success'
+    );
     
-    defiListHTML += '</div>';
-    
-    // Popup in der Mitte der Karte anzeigen
-    L.popup()
-        .setLatLng(map.getCenter())
-        .setContent(defiListHTML)
-        .openOn(map);
-    
-    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info');
+    // Ziel hervorheben
+    highlightTargetDefi(defi);
 }
 
 // ===============================
@@ -581,20 +892,30 @@ function geoFindMeForDefi(callback) {
         
         // Marker erstellen oder aktualisieren
         if (!currentUserMarker) {
-            createUserMarker(lat, lng);
+            // Kleinerer blauer Punkt
+            currentUserMarker = L.circleMarker([lat, lng], {
+                radius: 6,
+                color: '#1a73e8',
+                fillColor: '#4285f4',
+                fillOpacity: 0.9,
+                weight: 2
+            }).addTo(map);
         } else {
             currentUserMarker.setLatLng([lat, lng]);
         }
         
         // Karte auf Standort zentrieren
         currentUserMarker.openPopup();
-        map.setView([lat, lng], 16, { animate: true });
+        map.setView([lat, lng], 17, { animate: true });
         
         // Adresse ermitteln
         getSimpleAddress(lat, lng);
         
         // Erfolgsmeldung
-        showMessage('✅ Standort ermittelt!', 'success');
+        showMessage('✅ Standort ermittelt! Live-Tracking aktiv.', 'success');
+        
+        // Live-Tracking starten
+        startLiveTracking();
         
         // Callback aufrufen (für die spezifische Defi-Route)
         if (callback && typeof callback === 'function') {
@@ -624,156 +945,55 @@ function geoFindMeForDefi(callback) {
 }
 
 // ===============================
-// EINFACHE ADRESSE ANZEIGEN
-// ===============================
-function getSimpleAddress(lat, lng) {
-    if (!currentUserMarker) return;
-    
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`)
-        .then(res => res.json())
-        .then(data => {
-            if (!data || !data.address) {
-                currentUserMarker.setPopupContent(`
-                    <div style="font-family: Arial; min-width: 200px;">
-                        <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                            📍 Ihr Standort
-                        </h4>
-                        <div style="font-size: 14px;">
-                            Adresse nicht verfügbar
-                        </div>
-                    </div>
-                `);
-                return;
-            }
-            
-            const addr = data.address;
-            let street = addr.road || addr.pedestrian || '';
-            const number = addr.house_number ? ` ${addr.house_number}` : '';
-            const streetWithNumber = street ? `${street}${number}` : '';
-            let city = addr.city || addr.town || addr.village || '';
-            const postcode = addr.postcode || '';
-            
-            let addressText = '';
-            if (streetWithNumber) addressText += streetWithNumber;
-            if (postcode && city) {
-                if (addressText) addressText += '<br>';
-                addressText += `${postcode} ${city}`;
-            } else if (city) {
-                if (addressText) addressText += '<br>';
-                addressText += city;
-            }
-            
-            if (!addressText) addressText = 'Unbekannter Ort';
-            
-            currentUserMarker.setPopupContent(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr aktueller Standort
-                    </h4>
-                    <div style="font-size: 14px; line-height: 1.4;">
-                        ${addressText}
-                    </div>
-                </div>
-            `);
-        })
-        .catch(err => {
-            console.log('Adressermittlung fehlgeschlagen:', err);
-            currentUserMarker.setPopupContent(`
-                <div style="font-family: Arial; min-width: 200px;">
-                    <h4 style="margin: 0 0 8px 0; color: #1a5fb4; font-size: 16px;">
-                        📍 Ihr Standort
-                    </h4>
-                    <div style="font-size: 14px;">
-                        Adresse nicht verfügbar
-                    </div>
-                </div>
-            `);
-        });
-}
-
-// ===============================
 // Nachricht anzeigen
 // ===============================
 function showMessage(text, type = 'info') {
     console.log(`${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'} ${text}`);
     
-    // Für wichtige Meldungen ein Toast/Alert anzeigen
-    if (type === 'success' || type === 'error') {
-        // Temporäre Meldung als Popup in der Karte
-        const popup = L.popup()
-            .setLatLng(map.getCenter())
-            .setContent(`
-                <div style="font-family: Arial; padding: 10px; background: ${type === 'success' ? '#d4edda' : '#f8d7da'}; 
-                         color: ${type === 'success' ? '#155724' : '#721c24'}; border-radius: 4px;">
-                    ${type === 'success' ? '✅' : '❌'} ${text}
+    // Temporäre Meldung als Popup in der Karte
+    const popup = L.popup()
+        .setLatLng(map.getCenter())
+        .setContent(`
+            <div style="font-family: Arial; padding: 12px; 
+                     background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : '#d1ecf1'}; 
+                     color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'}; 
+                     border-radius: 6px; border-left: 4px solid 
+                     ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+                     max-width: 300px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">
+                        ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
+                    </span>
+                    <div style="font-size: 14px; line-height: 1.4;">${text}</div>
                 </div>
-            `)
-            .openOn(map);
+            </div>
+        `)
+        .openOn(map);
+    
+    // Popup nach 5 Sekunden automatisch schließen (8 für wichtige Meldungen)
+    const closeTime = type === 'success' ? 8000 : 5000;
+    setTimeout(() => {
+        map.closePopup(popup);
+    }, closeTime);
+}
+
+// ===============================
+// CSS für pulsierenden Marker hinzufügen
+// ===============================
+function addPulsingAnimation() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
         
-        // Popup nach 5 Sekunden automatisch schließen
-        setTimeout(() => {
-            map.closePopup(popup);
-        }, 5000);
-    }
-}
-
-// ===============================
-// Popup Fenster, welche zu einem bestimmten Defi routen
-// ===============================
-function routeToDefi(defi) {
-    // Wenn kein Standort vorhanden, zuerst fragen
-    if (!currentUserMarker) {
-        geoFindMeForDefi((lat, lng) => {
-            // Nach Standortermittlung Route berechnen
-            const userPos = { lat, lng };
-            createRouteToDefi(userPos, defi);
-        });
-        return;
-    }
-
-    const userPos = currentUserMarker.getLatLng();
-    createRouteToDefi(userPos, defi);
-}
-
-// Hilfsfunktion für Route zu spezifischem Defi
-function createRouteToDefi(userPos, defi) {
-    // Alte Route entfernen
-    if (routingControl) {
-        map.removeControl(routingControl);
-        routingControl = null;
-    }
-
-    // Neue Route berechnen
-    routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(userPos.lat, userPos.lng),
-            L.latLng(defi.latitude, defi.longitude)
-        ],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        show: false,
-        lineOptions: {
-            styles: [{
-                color: '#28668d',
-                weight: 6,
-                opacity: 0.8
-            }]
-        },
-        createMarker: () => null
-    }).addTo(map);
-
-    // Distanz berechnen
-    const distance = map.distance(
-        [userPos.lat, userPos.lng],
-        [defi.latitude, defi.longitude]
-    );
-
-    // Erfolgsmeldung
-    showMessage(
-        `🚑 Route zu ${defi.adresse.straße} ${defi.adresse.hausnummer} berechnet (${Math.round(distance)} m)`,
-        'success'
-    );
+        .user-live-marker {
+            z-index: 1000 !important;
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 // ===============================
@@ -783,42 +1003,4 @@ function initApp() {
     console.log('🚀 DeFind App wird gestartet');
     console.log('🔗 API:', RAILWAY_API);
     
-    // Defis laden
-    loadDefiData();
-    
-    // Event Listener nur für den "find-defi" Button
-    const findDefiBtn = document.getElementById('find-defi');
-    if (findDefiBtn) {
-        findDefiBtn.addEventListener('click', findAndRouteToNearestDefi);
-    } else {
-        console.error('❌ Button "find-defi" nicht gefunden!');
-    }
-    
-    // Für GitHub Pages: HTTPS erzwingen
-    if (window.location.hostname.includes('github.io') && 
-        window.location.protocol !== 'https:') {
-        console.log('🔄 Wechsel zu HTTPS');
-        window.location.href = window.location.href.replace('http:', 'https:');
-    }
-}
-
-// ===============================
-// DOM Ready
-// ===============================
-document.addEventListener('DOMContentLoaded', initApp);
-
-// ===============================
-// Debug-Funktionen (in Console)
-// ===============================
-window.debugDefis = function() {
-    console.log('🔍 DEBUG:');
-    console.log('Defis:', defiList);
-    console.log('API:', RAILWAY_API);
-    console.log('Karten-Center:', map.getCenter());
-    console.log('Standort-Marker:', currentUserMarker ? 'Ja' : 'Nein');
-};
-
-window.reloadDefis = function() {
-    console.log('🔄 Defis neu laden');
-    loadDefiData();
-};
+    // Pulsierende Animation hin
