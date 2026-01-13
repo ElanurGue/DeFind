@@ -1001,6 +1001,4 @@ function addPulsingAnimation() {
 // ===============================
 function initApp() {
     console.log('🚀 DeFind App wird gestartet');
-    console.log('🔗 API:', RAILWAY_API);
-    
-    // Pulsierende Animation hin
+    console.log('🔗

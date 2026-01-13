@@ -1,34 +1,15 @@
 {
-  "name": "defi-backend",
+  "name": "elina",
   "version": "1.0.0",
-  "description": "Defibrillator-Standorte Wien",
-  "main": "server.js",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "setup-db": "node setup-database.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "mysql2": "^3.6.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "engines": {
-    "node": "18.x"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ElanurGue/DeFind.git"
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/ElanurGue/DeFind/issues"
-  },
-  "homepage": "https://github.com/ElanurGue/DeFind#readme"
+  "description": ""
 }
