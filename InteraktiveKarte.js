@@ -257,8 +257,7 @@ function askForLocationAndFindDefi() {
     const userResponse = confirm(
         'DeFind - Nächsten Defibrillator finden\n\n' +
         'Um den nächstgelegenen Defibrillator zu finden, benötigen wir Ihren aktuellen Standort.\n\n' +
-        '• Ihre Daten werden nicht gespeichert\n' +
-        '• Nur für die Routenberechnung verwendet\n' +
+        '• Ihre Daten werden nicht gespeichert, sie werden nur für die Routenberechnung verwendet\n' +
         '• Ihre Position wird verfolgt, während Sie sich bewegen\n\n' +
         'OK = Standort teilen und Route berechnen\n' +
         'Abbrechen = Ohne Standort fortfahren'
@@ -602,7 +601,7 @@ function drawDirectRoute(userPos, defi) {
         [userPos.lat, userPos.lng],
         [defi.latitude, defi.longitude]
     ], {
-        color: '#0e6127',
+        color: '#2033a1',
         weight: 3,
         opacity: 0.6,
         dashArray: '5, 10'
@@ -681,10 +680,6 @@ function updateUserMarkerPopup(lat, lng) {
             </h4>
             <div style="font-size: 13px; line-height: 1.4; margin-bottom: 8px;">
                 <strong>🕒 ${time}</strong><br>
-                <span style="color: #666;">
-                    Lat: ${lat.toFixed(6)}<br>
-                    Lng: ${lng.toFixed(6)}
-                </span>
             </div>
             ${currentDefiTarget ? `
             <div style="background: #e8f5e9; padding: 6px; border-radius: 4px; font-size: 12px;">
@@ -1088,7 +1083,7 @@ function createUserMarker(lat, lng) {
     }
     
     currentUserMarker = L.circleMarker([lat, lng], {
-        radius: 6, // Kleinerer blauer Punkt
+        radius: 4, 
         color: '#1a73e8',
         fillColor: '#4285f4',
         fillOpacity: 0.9,
