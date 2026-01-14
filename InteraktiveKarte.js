@@ -319,7 +319,7 @@ function getUserLocationForRouting(button, originalButtonText) {
             currentUserMarker.setLatLng([lat, lng]);
         }
         
-        // Genauigkeitskreis (optional)
+        /* Genauigkeitskreis (optional)
         if (accuracy < 100) { // Nur anzeigen wenn Genauigkeit ok
             L.circle([lat, lng], {
                 radius: accuracy,
@@ -329,6 +329,7 @@ function getUserLocationForRouting(button, originalButtonText) {
                 weight: 1
             }).addTo(map).bindTooltip(`Genauigkeit: ${Math.round(accuracy)}m`);
         }
+        */
         
         // Popup für Live-Standort
         updateUserMarkerPopup(lat, lng);
