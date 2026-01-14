@@ -514,7 +514,7 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127', // Grün für Fußgänger
+                color: '#2363ed', // Grün für Fußgänger
                 weight: 5,
                 opacity: 0.8,
                 dashArray: '10, 10' // Gestrichelt für Fußgänger
@@ -582,7 +582,7 @@ function recalculateRoute(lat, lng) {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#0e6127',
+                color: '#1a73e8',
                 weight: 5,
                 opacity: 0.8,
                 dashArray: '10, 10'
