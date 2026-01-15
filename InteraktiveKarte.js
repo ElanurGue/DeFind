@@ -84,7 +84,7 @@ async function loadDefiData() {
         
         // Fallback zu statischen Defis
         loadFallbackDefis();
-        showMessage('⚠️ Verbindungsfehler. Lokale Daten werden verwendet.', 'warning');
+        showMessage('⚠️ Verbindungsfehler. Lokale Daten werden verwendet.', 'warning', 8000);
     }
 }
 
@@ -220,7 +220,7 @@ function findAndRouteToNearestDefi() {
     
     // Prüfen ob Defis geladen wurden
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar. Bitte warten Sie...', 'warning');
+        showMessage('Keine Defis verfügbar. Bitte warten Sie...', 'warning', 5000);
         loadDefiData();
         return;
     }
@@ -319,18 +319,6 @@ function getUserLocationForRouting(button, originalButtonText) {
             currentUserMarker.setLatLng([lat, lng]);
         }
         
-        /* Genauigkeitskreis (optional)
-        if (accuracy < 100) { // Nur anzeigen wenn Genauigkeit ok
-            L.circle([lat, lng], {
-                radius: accuracy,
-                color: '#1a73e8',
-                fillColor: '#4285f4',
-                fillOpacity: 0.1,
-                weight: 1
-            }).addTo(map).bindTooltip(`Genauigkeit: ${Math.round(accuracy)}m`);
-        }
-        */
-        
         // Popup für Live-Standort
         updateUserMarkerPopup(lat, lng);
         
@@ -340,6 +328,23 @@ function getUserLocationForRouting(button, originalButtonText) {
         
         // Adresse ermitteln
         getSimpleAddress(lat, lng);
+        
+        // Erfolgsmeldung mit längerer Anzeigezeit
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 8px;">
+                    ✅ Standort ermittelt
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <span style="font-weight: bold;">📍 Position:</span> ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                    Live-Tracking ist nun aktiv. Ihre Position wird automatisch aktualisiert.
+                </div>
+            </div>`,
+            'success',
+            8000
+        );
         
         // Route berechnen (mit kurzer Verzögerung für bessere UX)
         setTimeout(() => {
@@ -366,7 +371,7 @@ function getUserLocationForRouting(button, originalButtonText) {
             errorMessage = "Standortabfrage hat zu lange gedauert.";
         }
         
-        showMessage(errorMessage, 'error');
+        showMessage(errorMessage, 'error', 8000);
         
         // Fallback: Defi-Liste anzeigen
         showDefiListPopup();
@@ -436,7 +441,7 @@ function startLiveTracking() {
         },
         function(error) {
             console.warn('⚠️ Live-Tracking Fehler:', error);
-            showMessage('Live-Tracking unterbrochen', 'warning');
+            showMessage('Live-Tracking unterbrochen', 'warning', 5000);
         },
         {
             enableHighAccuracy: true,
@@ -445,7 +450,21 @@ function startLiveTracking() {
         }
     );
     
-    showMessage('✅ Live-Tracking aktiv. Ihre Position wird verfolgt.', 'success');
+    showMessage(
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 8px;">
+                ✅ Live-Tracking aktiv
+            </div>
+            <div style="margin-bottom: 6px;">
+                Ihre Position wird nun verfolgt. Bewegungen werden automatisch aktualisiert.
+            </div>
+            <div style="font-size: 12px; color: #666;">
+                Klicken Sie auf den blauen Punkt für Ihren aktuellen Standort.
+            </div>
+        </div>`,
+        'success',
+        8000
+    );
 }
 
 // ===============================
@@ -464,7 +483,7 @@ function stopLiveTracking() {
         btn.textContent = 'Finde den nächsten Defi';
     }
     
-    showMessage('Live-Tracking beendet.', 'info');
+    showMessage('Live-Tracking beendet.', 'info', 5000);
 }
 
 // ===============================
@@ -472,12 +491,12 @@ function stopLiveTracking() {
 // ===============================
 function calculateRouteToNearestDefi() {
     if (!currentUserMarker) {
-        showMessage('Standort nicht verfügbar.', 'error');
+        showMessage('Standort nicht verfügbar.', 'error', 5000);
         return;
     }
     
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning');
+        showMessage('Keine Defis verfügbar.', 'warning', 5000);
         return;
     }
     
@@ -485,7 +504,7 @@ function calculateRouteToNearestDefi() {
     const nearest = findNearestDefi(userPos.lat, userPos.lng);
     
     if (!nearest) {
-        showMessage('Keinen Defibrillator in der Nähe gefunden.', 'warning');
+        showMessage('Keinen Defibrillator in der Nähe gefunden.', 'warning', 5000);
         return;
     }
     
@@ -531,13 +550,27 @@ function calculateRouteToNearestDefi() {
             const distance = route.summary.totalDistance;
             const time = Math.round(route.summary.totalTime / 60); // Minuten
             
-            // Erfolgsmeldung mit Details
+            // Erfolgsmeldung mit Details - LÄNGERE ANZEIGEZEIT (15 Sekunden)
             showMessage(
-                `🚶‍♂️ Fußgänger-Route gefunden!<br>
-                📍 ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
-                📏 Entfernung: ${Math.round(distance)}m<br>
-                ⏱️ Gehzeit: ca. ${time} Minuten`, 
-                'success'
+                `<div style="text-align: left; padding: 5px;">
+                    <div style="font-size: 16px; font-weight: bold; color: #0e6127; margin-bottom: 8px;">
+                        ✅ Fußgänger-Route gefunden!
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <span style="font-weight: bold;">📍 Ziel:</span> ${nearest.adresse.straße} ${nearest.adresse.hausnummer}
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <span style="font-weight: bold;">📏 Entfernung:</span> ${Math.round(distance)} Meter
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <span style="font-weight: bold;">⏱️ Gehzeit:</span> ca. ${time} Minuten
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                        Die Route wird auf der Karte angezeigt. Folgen Sie der blau-gestrichelten Linie.
+                    </div>
+                </div>`, 
+                'success',
+                15000 // 15 Sekunden statt 8
             );
             
             // Ziel-Marker hervorheben
@@ -548,7 +581,7 @@ function calculateRouteToNearestDefi() {
     // Event Listener für Fehler
     routingControl.on('routingerror', function(e) {
         console.error('Routing Fehler:', e.error);
-        showMessage('Route konnte nicht berechnet werden. Versuche direkte Linie...', 'warning');
+        showMessage('Route konnte nicht berechnet werden. Versuche direkte Linie...', 'warning', 8000);
         
         // Fallback: Direkte Linie zeichnen
         drawDirectRoute(userPos, nearest);
@@ -591,7 +624,7 @@ function recalculateRoute(lat, lng) {
         createMarker: function() { return null; }
     }).addTo(map);
     
-    showMessage('Route wurde neu berechnet.', 'info');
+    showMessage('Route wurde neu berechnet.', 'info', 5000);
 }
 
 // ===============================
@@ -612,9 +645,23 @@ function drawDirectRoute(userPos, defi) {
     const distance = map.distance([userPos.lat, userPos.lng], [defi.latitude, defi.longitude]);
     
     showMessage(
-        `⚠️ Direkte Route (keine Fußwege berücksichtigt)<br>
-        📏 Luftlinie: ${Math.round(distance)}m`, 
-        'warning'
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                ⚠️ Direkte Route (Luftlinie)
+            </div>
+            <div style="margin-bottom: 6px;">
+                <span style="font-weight: bold;">📍 Ziel:</span> ${defi.adresse.straße} ${defi.adresse.hausnummer}
+            </div>
+            <div style="margin-bottom: 6px;">
+                <span style="font-weight: bold;">📏 Luftlinie:</span> ${Math.round(distance)} Meter
+            </div>
+            <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                <em>Hinweis:</em> Diese Route berücksichtigt keine Fußwege oder Straßen.
+                Sie wird in 30 Sekunden automatisch entfernt.
+            </div>
+        </div>`, 
+        'warning',
+        10000 // 10 Sekunden
     );
     
     // Als temporäre Route markieren
@@ -841,10 +888,24 @@ function createRouteToDefi(userPos, defi) {
         [defi.latitude, defi.longitude]
     );
 
-    // Erfolgsmeldung
+    // Erfolgsmeldung mit längerer Anzeigezeit
     showMessage(
-        `🚶‍♂️ Fußgänger-Route zu ${defi.adresse.straße} ${defi.adresse.hausnummer} berechnet (${Math.round(distance)} m)`,
-        'success'
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #0e6127; margin-bottom: 8px;">
+                ✅ Route zum Defibrillator berechnet
+            </div>
+            <div style="margin-bottom: 6px;">
+                <span style="font-weight: bold;">📍 Ziel:</span> ${defi.adresse.straße} ${defi.adresse.hausnummer}
+            </div>
+            <div style="margin-bottom: 6px;">
+                <span style="font-weight: bold;">📏 Entfernung:</span> ${Math.round(distance)} Meter
+            </div>
+            <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                Die Route wird auf der Karte angezeigt. Folgen Sie der grün-gestrichelten Linie.
+            </div>
+        </div>`,
+        'success',
+        15000 // 15 Sekunden
     );
     
     // Ziel hervorheben
@@ -870,7 +931,7 @@ function geoFindMeForDefi(callback) {
     );
     
     if (!userResponse) {
-        showMessage('Route kann ohne Standort nicht berechnet werden.', 'warning');
+        showMessage('Route kann ohne Standort nicht berechnet werden.', 'warning', 5000);
         return;
     }
     
@@ -908,7 +969,7 @@ function geoFindMeForDefi(callback) {
         getSimpleAddress(lat, lng);
         
         // Erfolgsmeldung
-        showMessage('✅ Standort ermittelt! Live-Tracking aktiv.', 'success');
+        showMessage('✅ Standort ermittelt! Live-Tracking aktiv.', 'success', 8000);
         
         // Live-Tracking starten
         startLiveTracking();
@@ -927,7 +988,7 @@ function geoFindMeForDefi(callback) {
             errorMessage = "Standort-Zugriff wurde verweigert.";
         }
         
-        showMessage(errorMessage, 'error');
+        showMessage(errorMessage, 'error', 8000);
         
         // Fallback-Standort setzen
         setDefaultLocation();
@@ -941,9 +1002,9 @@ function geoFindMeForDefi(callback) {
 }
 
 // ===============================
-// Nachricht anzeigen
+// Nachricht anzeigen (mit konfigurierbarer Dauer)
 // ===============================
-function showMessage(text, type = 'info') {
+function showMessage(text, type = 'info', duration = 5000) {
     console.log(`${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'} ${text}`);
     
     // Temporäre Meldung als Popup in der Karte
@@ -955,9 +1016,9 @@ function showMessage(text, type = 'info') {
                      color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : '#0c5460'}; 
                      border-radius: 6px; border-left: 4px solid 
                      ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
-                     max-width: 300px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">
+                     max-width: 350px;">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="font-size: 24px; flex-shrink: 0;">
                         ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
                     </span>
                     <div style="font-size: 14px; line-height: 1.4;">${text}</div>
@@ -966,11 +1027,13 @@ function showMessage(text, type = 'info') {
         `)
         .openOn(map);
     
-    // Popup nach 5 Sekunden automatisch schließen (8 für wichtige Meldungen)
-    const closeTime = type === 'success' ? 8000 : 5000;
+    // Popup nach spezifizierter Zeit schließen
+    // Erfolgsmeldungen für Routen: 15 Sekunden
+    // Fehlermeldungen: 8 Sekunden
+    // Info-Meldungen: 5 Sekunden
     setTimeout(() => {
         map.closePopup(popup);
-    }, closeTime);
+    }, duration);
 }
 
 // ===============================
@@ -993,58 +1056,11 @@ function addPulsingAnimation() {
 }
 
 // ===============================
-// App initialisieren
-// ===============================
-function initApp() {
-    console.log('🚀 DeFind App wird gestartet');
-    console.log('🔗 API:', RAILWAY_API);
-    
-    // CSS-Animationen hinzufügen
-    addPulsingAnimation();
-    
-    // Defis laden
-    loadDefiData();
-    
-    // Event Listener für den "find-defi" Button
-    const findDefiBtn = document.getElementById('find-defi');
-    if (findDefiBtn) {
-        findDefiBtn.addEventListener('click', findAndRouteToNearestDefi);
-    } else {
-        console.error('❌ Button "find-defi" nicht gefunden!');
-    }
-    
-    // Für GitHub Pages: HTTPS erzwingen
-    if (window.location.hostname.includes('github.io') && 
-        window.location.protocol !== 'https:') {
-        console.log('🔄 Wechsel zu HTTPS');
-        window.location.href = window.location.href.replace('http:', 'https:');
-    }
-    
-    // Event Listener für Karten-Klick, um Live-Tracking zu stoppen
-    map.on('click', function() {
-        if (isLiveTracking) {
-            currentUserMarker.openPopup();
-        }
-    });
-    
-    console.log('✅ App initialisiert');
-}
-
-// ===============================
-// DOM Ready
-// ===============================
-document.addEventListener('DOMContentLoaded', initApp);
-
-// ===============================
-// Fehlende Funktionen hinzufügen
-// ===============================
-
-// ===============================
 // Defi-Liste als Popup anzeigen (wenn kein Standort)
 // ===============================
 function showDefiListPopup() {
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning');
+        showMessage('Keine Defis verfügbar.', 'warning', 5000);
         return;
     }
     
@@ -1072,7 +1088,7 @@ function showDefiListPopup() {
         .setContent(defiListHTML)
         .openOn(map);
     
-    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info');
+    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info', 5000);
 }
 
 // ===============================
@@ -1184,7 +1200,21 @@ if (typeof L.Routing === 'undefined') {
     const originalCalculateRoute = window.calculateRouteToNearestDefi;
     window.calculateRouteToNearestDefi = function() {
         if (typeof L.Routing === 'undefined') {
-            alert('🚧 Routing-Funktion temporär nicht verfügbar.\n\nBitte laden Sie die Seite neu oder verwenden Sie die direkte Ansicht.');
+            showMessage(
+                '<div style="text-align: left; padding: 5px;">' +
+                '<div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">' +
+                '🚧 Routing-Funktion nicht verfügbar' +
+                '</div>' +
+                '<div style="margin-bottom: 6px;">' +
+                'Die Leaflet Routing Machine Bibliothek konnte nicht geladen werden.' +
+                '</div>' +
+                '<div style="font-size: 12px; color: #666;">' +
+                'Bitte laden Sie die Seite neu oder überprüfen Sie Ihre Internetverbindung.' +
+                '</div>' +
+                '</div>',
+                'error',
+                10000
+            );
             return;
         }
         if (originalCalculateRoute) {
@@ -1192,5 +1222,48 @@ if (typeof L.Routing === 'undefined') {
         }
     };
 }
+
+// ===============================
+// App initialisieren
+// ===============================
+function initApp() {
+    console.log('🚀 DeFind App wird gestartet');
+    console.log('🔗 API:', RAILWAY_API);
+    
+    // CSS-Animationen hinzufügen
+    addPulsingAnimation();
+    
+    // Defis laden
+    loadDefiData();
+    
+    // Event Listener für den "find-defi" Button
+    const findDefiBtn = document.getElementById('find-defi');
+    if (findDefiBtn) {
+        findDefiBtn.addEventListener('click', findAndRouteToNearestDefi);
+    } else {
+        console.error('❌ Button "find-defi" nicht gefunden!');
+    }
+    
+    // Für GitHub Pages: HTTPS erzwingen
+    if (window.location.hostname.includes('github.io') && 
+        window.location.protocol !== 'https:') {
+        console.log('🔄 Wechsel zu HTTPS');
+        window.location.href = window.location.href.replace('http:', 'https:');
+    }
+    
+    // Event Listener für Karten-Klick, um Live-Tracking zu stoppen
+    map.on('click', function() {
+        if (isLiveTracking) {
+            currentUserMarker.openPopup();
+        }
+    });
+    
+    console.log('✅ App initialisiert');
+}
+
+// ===============================
+// DOM Ready
+// ===============================
+document.addEventListener('DOMContentLoaded', initApp);
 
 console.log('✅ JS InteraktiveKarte.js komplett geladen');
