@@ -84,7 +84,18 @@ async function loadDefiData() {
         
         // Fallback zu statischen Defis
         loadFallbackDefis();
-        showMessage('⚠️ Verbindungsfehler. Lokale Daten werden verwendet.', 'warning', 8000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Verbindungsfehler
+                </div>
+                <div style="margin-bottom: 6px;">
+                    Lokale Daten werden verwendet.
+                </div>
+            </div>`, 
+            'warning', 
+            10000
+        );
     }
 }
 
@@ -220,7 +231,18 @@ function findAndRouteToNearestDefi() {
     
     // Prüfen ob Defis geladen wurden
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar. Bitte warten Sie...', 'warning', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Keine Defis verfügbar
+                </div>
+                <div style="margin-bottom: 6px;">
+                    Bitte warten Sie...
+                </div>
+            </div>`, 
+            'warning', 
+            8000
+        );
         loadDefiData();
         return;
     }
@@ -338,12 +360,15 @@ function getUserLocationForRouting(button, originalButtonText) {
                 <div style="margin-bottom: 6px;">
                     <span style="font-weight: bold;">📍 Position:</span> ${lat.toFixed(6)}, ${lng.toFixed(6)}
                 </div>
+                <div style="margin-bottom: 6px;">
+                    <span style="font-weight: bold;">🎯 Genauigkeit:</span> ${Math.round(accuracy)} Meter
+                </div>
                 <div style="font-size: 12px; color: #666; margin-top: 8px;">
                     Live-Tracking ist nun aktiv. Ihre Position wird automatisch aktualisiert.
                 </div>
             </div>`,
             'success',
-            8000
+            10000 // 10 Sekunden
         );
         
         // Route berechnen (mit kurzer Verzögerung für bessere UX)
@@ -371,7 +396,18 @@ function getUserLocationForRouting(button, originalButtonText) {
             errorMessage = "Standortabfrage hat zu lange gedauert.";
         }
         
-        showMessage(errorMessage, 'error', 8000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ❌ Standortfehler
+                </div>
+                <div style="margin-bottom: 6px;">
+                    ${errorMessage}
+                </div>
+            </div>`, 
+            'error', 
+            10000
+        );
         
         // Fallback: Defi-Liste anzeigen
         showDefiListPopup();
@@ -441,7 +477,15 @@ function startLiveTracking() {
         },
         function(error) {
             console.warn('⚠️ Live-Tracking Fehler:', error);
-            showMessage('Live-Tracking unterbrochen', 'warning', 5000);
+            showMessage(
+                `<div style="text-align: left; padding: 5px;">
+                    <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                        ⚠️ Live-Tracking unterbrochen
+                    </div>
+                </div>`, 
+                'warning', 
+                8000
+            );
         },
         {
             enableHighAccuracy: true,
@@ -483,7 +527,15 @@ function stopLiveTracking() {
         btn.textContent = 'Finde den nächsten Defi';
     }
     
-    showMessage('Live-Tracking beendet.', 'info', 5000);
+    showMessage(
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #666; margin-bottom: 8px;">
+                ℹ️ Live-Tracking beendet
+            </div>
+        </div>`, 
+        'info', 
+        8000
+    );
 }
 
 // ===============================
@@ -491,12 +543,28 @@ function stopLiveTracking() {
 // ===============================
 function calculateRouteToNearestDefi() {
     if (!currentUserMarker) {
-        showMessage('Standort nicht verfügbar.', 'error', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ❌ Standort nicht verfügbar
+                </div>
+            </div>`, 
+            'error', 
+            8000
+        );
         return;
     }
     
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Keine Defis verfügbar
+                </div>
+            </div>`, 
+            'warning', 
+            8000
+        );
         return;
     }
     
@@ -504,7 +572,15 @@ function calculateRouteToNearestDefi() {
     const nearest = findNearestDefi(userPos.lat, userPos.lng);
     
     if (!nearest) {
-        showMessage('Keinen Defibrillator in der Nähe gefunden.', 'warning', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Keinen Defi in der Nähe gefunden
+                </div>
+            </div>`, 
+            'warning', 
+            8000
+        );
         return;
     }
     
@@ -550,27 +626,29 @@ function calculateRouteToNearestDefi() {
             const distance = route.summary.totalDistance;
             const time = Math.round(route.summary.totalTime / 60); // Minuten
             
-            // Erfolgsmeldung mit Details - LÄNGERE ANZEIGEZEIT (15 Sekunden)
+            // Erfolgsmeldung mit Details - SEHR LANGE ANZEIGEZEIT (20 Sekunden)
             showMessage(
                 `<div style="text-align: left; padding: 5px;">
-                    <div style="font-size: 16px; font-weight: bold; color: #0e6127; margin-bottom: 8px;">
+                    <div style="font-size: 18px; font-weight: bold; color: #0e6127; margin-bottom: 10px;">
                         ✅ Fußgänger-Route gefunden!
                     </div>
-                    <div style="margin-bottom: 6px;">
-                        <span style="font-weight: bold;">📍 Ziel:</span> ${nearest.adresse.straße} ${nearest.adresse.hausnummer}
+                    <div style="margin-bottom: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
+                        <span style="font-weight: bold; color: #1a73e8;">📍 Ziel:</span><br>
+                        ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
+                        ${nearest.adresse.plz} ${nearest.adresse.stadt}
                     </div>
-                    <div style="margin-bottom: 6px;">
-                        <span style="font-weight: bold;">📏 Entfernung:</span> ${Math.round(distance)} Meter
+                    <div style="margin-bottom: 8px;">
+                        <span style="font-weight: bold; color: #1a73e8;">📏 Entfernung:</span> ${Math.round(distance)} Meter
                     </div>
-                    <div style="margin-bottom: 6px;">
-                        <span style="font-weight: bold;">⏱️ Gehzeit:</span> ca. ${time} Minuten
+                    <div style="margin-bottom: 8px;">
+                        <span style="font-weight: bold; color: #1a73e8;">⏱️ Gehzeit:</span> ca. ${time} Minuten
                     </div>
-                    <div style="font-size: 12px; color: #666; margin-top: 8px;">
-                        Die Route wird auf der Karte angezeigt. Folgen Sie der blau-gestrichelten Linie.
+                    <div style="font-size: 13px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        Die Route wird auf der Karte angezeigt. Folgen Sie der <span style="color: #2363ed; font-weight: bold;">blau-gestrichelten Linie</span>.
                     </div>
                 </div>`, 
                 'success',
-                15000 // 15 Sekunden statt 8
+                20000 // 20 Sekunden - sehr lange um alles zu lesen
             );
             
             // Ziel-Marker hervorheben
@@ -581,7 +659,18 @@ function calculateRouteToNearestDefi() {
     // Event Listener für Fehler
     routingControl.on('routingerror', function(e) {
         console.error('Routing Fehler:', e.error);
-        showMessage('Route konnte nicht berechnet werden. Versuche direkte Linie...', 'warning', 8000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Route konnte nicht berechnet werden
+                </div>
+                <div style="margin-bottom: 6px;">
+                    Versuche direkte Linie...
+                </div>
+            </div>`, 
+            'warning', 
+            10000
+        );
         
         // Fallback: Direkte Linie zeichnen
         drawDirectRoute(userPos, nearest);
@@ -624,7 +713,15 @@ function recalculateRoute(lat, lng) {
         createMarker: function() { return null; }
     }).addTo(map);
     
-    showMessage('Route wurde neu berechnet.', 'info', 5000);
+    showMessage(
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 8px;">
+                ℹ️ Route wurde neu berechnet
+            </div>
+        </div>`, 
+        'info', 
+        8000
+    );
 }
 
 // ===============================
@@ -649,19 +746,20 @@ function drawDirectRoute(userPos, defi) {
             <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
                 ⚠️ Direkte Route (Luftlinie)
             </div>
-            <div style="margin-bottom: 6px;">
-                <span style="font-weight: bold;">📍 Ziel:</span> ${defi.adresse.straße} ${defi.adresse.hausnummer}
+            <div style="margin-bottom: 8px; padding: 8px; background: #fff8e1; border-radius: 4px;">
+                <span style="font-weight: bold; color: #cc0000;">📍 Ziel:</span><br>
+                ${defi.adresse.straße} ${defi.adresse.hausnummer}
             </div>
-            <div style="margin-bottom: 6px;">
-                <span style="font-weight: bold;">📏 Luftlinie:</span> ${Math.round(distance)} Meter
+            <div style="margin-bottom: 8px;">
+                <span style="font-weight: bold; color: #cc0000;">📏 Luftlinie:</span> ${Math.round(distance)} Meter
             </div>
-            <div style="font-size: 12px; color: #666; margin-top: 8px;">
-                <em>Hinweis:</em> Diese Route berücksichtigt keine Fußwege oder Straßen.
+            <div style="font-size: 13px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                <em>Hinweis:</em> Diese Route berücksichtigt keine Fußwege oder Straßen.<br>
                 Sie wird in 30 Sekunden automatisch entfernt.
             </div>
         </div>`, 
         'warning',
-        10000 // 10 Sekunden
+        15000 // 15 Sekunden
     );
     
     // Als temporäre Route markieren
@@ -891,21 +989,23 @@ function createRouteToDefi(userPos, defi) {
     // Erfolgsmeldung mit längerer Anzeigezeit
     showMessage(
         `<div style="text-align: left; padding: 5px;">
-            <div style="font-size: 16px; font-weight: bold; color: #0e6127; margin-bottom: 8px;">
+            <div style="font-size: 18px; font-weight: bold; color: #0e6127; margin-bottom: 10px;">
                 ✅ Route zum Defibrillator berechnet
             </div>
-            <div style="margin-bottom: 6px;">
-                <span style="font-weight: bold;">📍 Ziel:</span> ${defi.adresse.straße} ${defi.adresse.hausnummer}
+            <div style="margin-bottom: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
+                <span style="font-weight: bold; color: #1a73e8;">📍 Ziel:</span><br>
+                ${defi.adresse.straße} ${defi.adresse.hausnummer}<br>
+                ${defi.adresse.plz} ${defi.adresse.stadt}
             </div>
-            <div style="margin-bottom: 6px;">
-                <span style="font-weight: bold;">📏 Entfernung:</span> ${Math.round(distance)} Meter
+            <div style="margin-bottom: 8px;">
+                <span style="font-weight: bold; color: #1a73e8;">📏 Entfernung:</span> ${Math.round(distance)} Meter
             </div>
-            <div style="font-size: 12px; color: #666; margin-top: 8px;">
-                Die Route wird auf der Karte angezeigt. Folgen Sie der grün-gestrichelten Linie.
+            <div style="font-size: 13px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                Die Route wird auf der Karte angezeigt. Folgen Sie der <span style="color: #0e6127; font-weight: bold;">grün-gestrichelten Linie</span>.
             </div>
         </div>`,
         'success',
-        15000 // 15 Sekunden
+        20000 // 20 Sekunden
     );
     
     // Ziel hervorheben
@@ -931,7 +1031,18 @@ function geoFindMeForDefi(callback) {
     );
     
     if (!userResponse) {
-        showMessage('Route kann ohne Standort nicht berechnet werden.', 'warning', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Route kann nicht berechnet werden
+                </div>
+                <div style="margin-bottom: 6px;">
+                    Ohne Standort keine Route möglich.
+                </div>
+            </div>`, 
+            'warning', 
+            8000
+        );
         return;
     }
     
@@ -969,7 +1080,18 @@ function geoFindMeForDefi(callback) {
         getSimpleAddress(lat, lng);
         
         // Erfolgsmeldung
-        showMessage('✅ Standort ermittelt! Live-Tracking aktiv.', 'success', 8000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 8px;">
+                    ✅ Standort ermittelt
+                </div>
+                <div style="margin-bottom: 6px;">
+                    Live-Tracking aktiv.
+                </div>
+            </div>`, 
+            'success', 
+            10000
+        );
         
         // Live-Tracking starten
         startLiveTracking();
@@ -988,7 +1110,18 @@ function geoFindMeForDefi(callback) {
             errorMessage = "Standort-Zugriff wurde verweigert.";
         }
         
-        showMessage(errorMessage, 'error', 8000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ❌ Standortfehler
+                </div>
+                <div style="margin-bottom: 6px;">
+                    ${errorMessage}
+                </div>
+            </div>`, 
+            'error', 
+            10000
+        );
         
         // Fallback-Standort setzen
         setDefaultLocation();
@@ -1028,9 +1161,9 @@ function showMessage(text, type = 'info', duration = 5000) {
         .openOn(map);
     
     // Popup nach spezifizierter Zeit schließen
-    // Erfolgsmeldungen für Routen: 15 Sekunden
-    // Fehlermeldungen: 8 Sekunden
-    // Info-Meldungen: 5 Sekunden
+    // Erfolgsmeldungen für Routen: 20 Sekunden
+    // Fehlermeldungen: 10 Sekunden
+    // Info-Meldungen: 8 Sekunden
     setTimeout(() => {
         map.closePopup(popup);
     }, duration);
@@ -1060,7 +1193,15 @@ function addPulsingAnimation() {
 // ===============================
 function showDefiListPopup() {
     if (!defiList || defiList.length === 0) {
-        showMessage('Keine Defis verfügbar.', 'warning', 5000);
+        showMessage(
+            `<div style="text-align: left; padding: 5px;">
+                <div style="font-size: 16px; font-weight: bold; color: #cc0000; margin-bottom: 8px;">
+                    ⚠️ Keine Defis verfügbar
+                </div>
+            </div>`, 
+            'warning', 
+            8000
+        );
         return;
     }
     
@@ -1088,7 +1229,18 @@ function showDefiListPopup() {
         .setContent(defiListHTML)
         .openOn(map);
     
-    showMessage('Wählen Sie einen Defibrillator aus der Liste aus.', 'info', 5000);
+    showMessage(
+        `<div style="text-align: left; padding: 5px;">
+            <div style="font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 8px;">
+                ℹ️ Wählen Sie einen Defibrillator
+            </div>
+            <div style="margin-bottom: 6px;">
+                Aus der Liste aus.
+            </div>
+        </div>`, 
+        'info', 
+        8000
+    );
 }
 
 // ===============================
@@ -1213,7 +1365,7 @@ if (typeof L.Routing === 'undefined') {
                 '</div>' +
                 '</div>',
                 'error',
-                10000
+                15000
             );
             return;
         }
