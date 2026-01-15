@@ -530,7 +530,7 @@ function stopLiveTracking() {
     showMessage(
         `<div style="text-align: left; padding: 5px;">
             <div style="font-size: 16px; font-weight: bold; color: #666; margin-bottom: 8px;">
-                ℹ️ Live-Tracking beendet
+            Live-Tracking beendet
             </div>
         </div>`, 
         'info', 
@@ -625,31 +625,6 @@ function calculateRouteToNearestDefi() {
             const route = routes[0];
             const distance = route.summary.totalDistance;
             const time = Math.round(route.summary.totalTime / 60); // Minuten
-            
-            // Erfolgsmeldung mit Details - SEHR LANGE ANZEIGEZEIT (20 Sekunden)
-            showMessage(
-                `<div style="text-align: left; padding: 5px;">
-                    <div style="font-size: 18px; font-weight: bold; color: #0e6127; margin-bottom: 10px;">
-                        ✅ Fußgänger-Route gefunden!
-                    </div>
-                    <div style="margin-bottom: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
-                        <span style="font-weight: bold; color: #1a73e8;">📍 Ziel:</span><br>
-                        ${nearest.adresse.straße} ${nearest.adresse.hausnummer}<br>
-                        ${nearest.adresse.plz} ${nearest.adresse.stadt}
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-weight: bold; color: #1a73e8;">📏 Entfernung:</span> ${Math.round(distance)} Meter
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-weight: bold; color: #1a73e8;">⏱️ Gehzeit:</span> ca. ${time} Minuten
-                    </div>
-                    <div style="font-size: 13px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                        Die Route wird auf der Karte angezeigt. Folgen Sie der <span style="color: #2363ed; font-weight: bold;">blau-gestrichelten Linie</span>.
-                    </div>
-                </div>`, 
-                'success',
-                20000 // 20 Sekunden - sehr lange um alles zu lesen
-            );
             
             // Ziel-Marker hervorheben
             highlightTargetDefi(nearest);
