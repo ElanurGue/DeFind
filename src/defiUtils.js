@@ -40,7 +40,30 @@ function findNearestDefi(userLat, userLng, defiList) {
     return nearest;
 }
 
+// Prüft ob der Nutzer mehr als `threshold` Meter von der Route abgewichen ist.
+// routeCoords = Array von { lat, lng } Punkten der aktuellen Route
+// userLat, userLng = aktuelle Position des Nutzers
+// threshold = maximale Abweichung in Metern (laut CR1: 15m)
+function isOffRoute(userLat, userLng, routeCoords, threshold = 15) {
+    if (!Array.isArray(routeCoords) || routeCoords.length === 0) {
+        return false;
+    }
+
+    let minDist = Infinity;
+
+    // Kleinste Distanz zu irgendeinem Punkt auf der Route berechnen
+    for (let i = 0; i < routeCoords.length; i++) {
+        const dist = calculateDistance(userLat, userLng, routeCoords[i].lat, routeCoords[i].lng);
+        if (dist < minDist) {
+            minDist = dist;
+        }
+    }
+
+    return minDist > threshold;
+}
+
 module.exports = {
     calculateDistance,
-    findNearestDefi
+    findNearestDefi,
+    isOffRoute
 };
