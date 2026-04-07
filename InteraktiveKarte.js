@@ -34,7 +34,7 @@ const heartIcon = L.icon({
 // ===============================
 // RAILWAY API KONFIGURATION
 // ===============================
-const RAILWAY_API = 'https://defind-production.up.railway.app/api/standorte';
+const RAILWAY_API = 'http://localhost:3000/api/standorte';
 
 // ===============================
 // OSRM Routing Service für Fußgänger
@@ -44,6 +44,125 @@ const routingService = L.Routing.osrmv1({
     profile: 'foot', // Fußgänger-Routen
     timeout: 10000
 });
+
+// ===============================
+// NAVIGATIONSANZEIGE – Box erstellen (wird einmalig beim Start eingefügt)
+// ===============================
+function createNavBox() {
+    // Nur erstellen wenn noch nicht vorhanden
+    if (document.getElementById('nav-box')) return;
+
+    const navBox = document.createElement('div');
+    navBox.id = 'nav-box';
+    navBox.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(14, 97, 39, 0.92);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 14px;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        z-index: 9999;
+        min-width: 180px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        pointer-events: none;
+    `;
+    navBox.innerHTML = `
+        <div id="nav-pfeil" style="font-size: 40px; line-height: 1;">⬆️</div>
+        <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; margin-top: 4px;">-- m</div>
+        <div id="nav-strasse" style="font-size: 13px; margin-top: 4px; opacity: 0.85;"></div>
+    `;
+    document.body.appendChild(navBox);
+}
+
+// ===============================
+// NAVIGATIONSANZEIGE – Anzeige aktualisieren
+// ===============================
+function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
+    const box = document.getElementById('nav-box');
+    if (!box) return;
+
+    box.style.display = 'block';
+    document.getElementById('nav-pfeil').textContent = pfeil;
+    document.getElementById('nav-entfernung').textContent = Math.round(entfernung) + ' m';
+    document.getElementById('nav-strasse').textContent = strasse || '';
+}
+
+// ===============================
+// NAVIGATIONSANZEIGE – Box ausblenden
+// ===============================
+function verbergeNavAnzeige() {
+    const box = document.getElementById('nav-box');
+    if (box) box.style.display = 'none';
+}
+
+// ===============================
+// NAVIGATIONSANZEIGE – Richtungspfeil bestimmen
+// ===============================
+function bestimmePfeil(typ) {
+    if (!typ) return '⬆️';
+    const t = typ.toLowerCase();
+    if (t.includes('left'))  return '⬅️';
+    if (t.includes('right')) return '➡️';
+    if (t.includes('arrive')) return '🏁';
+    return '⬆️';
+}
+
+// ===============================
+// NAVIGATIONSANZEIGE – GPS-Position laufend mit Route vergleichen
+// ===============================
+function starteNavAnzeige(routeSchritte, routePunkte) {
+    if (!routeSchritte || routeSchritte.length === 0) return;
+
+    navigator.geolocation.watchPosition(function(pos) {
+        const nutzerLat = pos.coords.latitude;
+        const nutzerLon = pos.coords.longitude;
+
+        let naechsterSchritt = null;
+        let kleinsteEntfernung = Infinity;
+
+        routeSchritte.forEach(function(schritt) {
+            const idx = schritt.index;
+            if (!routePunkte[idx]) return;
+
+            const schrittLat = routePunkte[idx].lat;
+            const schrittLng = routePunkte[idx].lng;
+            const entf = berechneEntfernung(nutzerLat, nutzerLon, schrittLat, schrittLng);
+
+            if (entf < kleinsteEntfernung) {
+                kleinsteEntfernung = entf;
+                naechsterSchritt = schritt;
+            }
+        });
+
+        if (naechsterSchritt) {
+            const pfeil = bestimmePfeil(naechsterSchritt.type);
+            aktualisiereNavAnzeige(kleinsteEntfernung, pfeil, naechsterSchritt.road || '');
+        }
+
+    }, function(err) {
+        console.warn('GPS Fehler in NavAnzeige:', err);
+        
+    }, { enableHighAccuracy: true, maximumAge: 1000 });
+}
+
+// ===============================
+// NAVIGATIONSANZEIGE – Entfernung zwischen zwei Punkten (in Metern)
+// ===============================
+function berechneEntfernung(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 // ===============================
 // Defi-Daten von Railway laden
@@ -521,6 +640,9 @@ function stopLiveTracking() {
     }
     
     isLiveTracking = false;
+
+    // Navigationsanzeige ausblenden wenn Tracking gestoppt
+    verbergeNavAnzeige();
     
     const btn = document.getElementById('find-defi');
     if (btn) {
@@ -609,10 +731,10 @@ function calculateRouteToNearestDefi() {
         show: false,
         lineOptions: {
             styles: [{
-                color: '#2363ed', // Grün für Fußgänger
+                color: '#2363ed',
                 weight: 5,
                 opacity: 0.8,
-                dashArray: '10, 10' // Gestrichelt für Fußgänger
+                dashArray: '10, 10'
             }]
         },
         createMarker: function() { return null; }
@@ -623,9 +745,12 @@ function calculateRouteToNearestDefi() {
         const routes = e.routes;
         if (routes && routes.length > 0) {
             const route = routes[0];
-            const distance = route.summary.totalDistance;
-            const time = Math.round(route.summary.totalTime / 60); // Minuten
-            
+
+            // ── NEU: Navigationsanzeige starten ──
+            // route.instructions = Abbiegeschritte
+            // route.coordinates  = alle GPS-Punkte der Route
+            starteNavAnzeige(route.instructions, route.coordinates);
+
             // Ziel-Marker hervorheben
             highlightTargetDefi(nearest);
         }
@@ -658,6 +783,9 @@ function calculateRouteToNearestDefi() {
 function recalculateRoute(lat, lng) {
     if (!currentDefiTarget) return;
     
+    // Navigationsanzeige kurz zurücksetzen
+    verbergeNavAnzeige();
+
     // Alte Route entfernen
     if (routingControl) {
         map.removeControl(routingControl);
@@ -687,6 +815,14 @@ function recalculateRoute(lat, lng) {
         },
         createMarker: function() { return null; }
     }).addTo(map);
+
+    // Navigationsanzeige für neue Route starten
+    routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (routes && routes.length > 0) {
+            starteNavAnzeige(routes[0].instructions, routes[0].coordinates);
+        }
+    });
     
     showMessage(
         `<div style="text-align: left; padding: 5px;">
@@ -933,6 +1069,9 @@ function createRouteToDefi(userPos, defi) {
         routingControl = null;
     }
 
+    // Navigationsanzeige zurücksetzen
+    verbergeNavAnzeige();
+
     // Neue Route für Fußgänger berechnen
     routingControl = L.Routing.control({
         router: routingService,
@@ -955,32 +1094,18 @@ function createRouteToDefi(userPos, defi) {
         createMarker: () => null
     }).addTo(map);
 
+    // ── NEU: Navigationsanzeige starten sobald Route geladen ──
+    routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (routes && routes.length > 0) {
+            starteNavAnzeige(routes[0].instructions, routes[0].coordinates);
+        }
+    });
+
     // Distanz berechnen
     const distance = map.distance(
         [userPos.lat, userPos.lng],
         [defi.latitude, defi.longitude]
-    );
-
-    // Erfolgsmeldung mit längerer Anzeigezeit
-    showMessage(
-        `<div style="text-align: left; padding: 5px;">
-            <div style="font-size: 18px; font-weight: bold; color: #0e6127; margin-bottom: 10px;">
-                ✅ Route zum Defibrillator berechnet
-            </div>
-            <div style="margin-bottom: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
-                <span style="font-weight: bold; color: #1a73e8;">📍 Ziel:</span><br>
-                ${defi.adresse.straße} ${defi.adresse.hausnummer}<br>
-                ${defi.adresse.plz} ${defi.adresse.stadt}
-            </div>
-            <div style="margin-bottom: 8px;">
-                <span style="font-weight: bold; color: #1a73e8;">📏 Entfernung:</span> ${Math.round(distance)} Meter
-            </div>
-            <div style="font-size: 13px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                Die Route wird auf der Karte angezeigt. Folgen Sie der <span style="color: #0e6127; font-weight: bold;">grün-gestrichelten Linie</span>.
-            </div>
-        </div>`,
-        'success',
-        20000 // 20 Sekunden
     );
     
     // Ziel hervorheben
@@ -1135,10 +1260,6 @@ function showMessage(text, type = 'info', duration = 5000) {
         `)
         .openOn(map);
     
-    // Popup nach spezifizierter Zeit schließen
-    // Erfolgsmeldungen für Routen: 20 Sekunden
-    // Fehlermeldungen: 10 Sekunden
-    // Info-Meldungen: 8 Sekunden
     setTimeout(() => {
         map.closePopup(popup);
     }, duration);
@@ -1323,7 +1444,6 @@ if (typeof L.Routing === 'undefined') {
         alert('Routing-Funktion nicht verfügbar. Bitte Routing Machine Bibliothek laden.');
     };
     
-    // Überschreibe die calculateRouteToNearestDefi Funktion mit Fallback
     const originalCalculateRoute = window.calculateRouteToNearestDefi;
     window.calculateRouteToNearestDefi = function() {
         if (typeof L.Routing === 'undefined') {
@@ -1359,6 +1479,9 @@ function initApp() {
     
     // CSS-Animationen hinzufügen
     addPulsingAnimation();
+
+    // ── NEU: Navigationsbox einmalig ins DOM einfügen ──
+    createNavBox();
     
     // Defis laden
     loadDefiData();
