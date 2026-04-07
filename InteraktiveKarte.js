@@ -20,7 +20,7 @@ let currentUserMarker = null;
 let positionWatchId = null;
 let isLiveTracking = false;
 let currentDefiTarget = null;
-
+let currentRouteCoords = [];
 // ===============================
 // Icons
 // ===============================
@@ -587,8 +587,8 @@ function startLiveTracking() {
                     const userPos = currentUserMarker.getLatLng();
                     const distanceToRoute = calculateDistanceToRoute(userPos);
                     
-                    if (distanceToRoute > 50) { // Wenn mehr als 50m von der Route entfernt
-                        console.log('⚠️ Zu weit von Route entfernt, berechne neu...');
+                    if (distanceToRoute > 15) { // Wenn mehr als 15m von der Route entfernt
+                        console.log('Zu weit von Route entfernt, berechne neu...');
                         recalculateRoute(lat, lng);
                     }
                 }
@@ -746,9 +746,7 @@ function calculateRouteToNearestDefi() {
         if (routes && routes.length > 0) {
             const route = routes[0];
 
-            // ── NEU: Navigationsanzeige starten ──
-            // route.instructions = Abbiegeschritte
-            // route.coordinates  = alle GPS-Punkte der Route
+            currentRouteCoords = route.coordinates;
             starteNavAnzeige(route.instructions, route.coordinates);
 
             // Ziel-Marker hervorheben
@@ -953,9 +951,14 @@ function updateUserMarkerPopup(lat, lng) {
 // Distanz zur aktuellen Route berechnen
 // ===============================
 function calculateDistanceToRoute(userPos) {
-    // Vereinfachte Berechnung - in einer vollständigen Implementierung
-    // würde man die tatsächliche Distanz zur Polyline berechnen
-    return 0;
+     if (!currentRouteCoords || currentRouteCoords.length === 0) return 0;
+    
+    let minDist = Infinity;
+    currentRouteCoords.forEach(point => {
+        const dist = berechneEntfernung(userPos.lat, userPos.lng, point.lat, point.lng);
+        if (dist < minDist) minDist = dist;
+    });
+    return minDist;
 }
 
 // ===============================
@@ -1098,6 +1101,7 @@ function createRouteToDefi(userPos, defi) {
     routingControl.on('routesfound', function(e) {
         const routes = e.routes;
         if (routes && routes.length > 0) {
+            currentRouteCoords = routes[0].coordinates; 
             starteNavAnzeige(routes[0].instructions, routes[0].coordinates);
         }
     });
