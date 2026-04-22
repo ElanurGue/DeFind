@@ -2,34 +2,89 @@
 // NAVIGATIONSANZEIGE – Box erstellen (wird einmalig beim Start eingefügt)
 // ===============================
 function createNavBox() {
-    // Nur erstellen wenn noch nicht vorhanden
-    if (document.getElementById('nav-box')) return;
+    // Prüfen, ob der Wrapper schon existiert
+    if (document.getElementById('nav-wrapper')) return;
 
+    // 1. CSS für responsives Layout dynamisch einfügen
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #nav-wrapper {
+            position: fixed;
+            top: 80px; /* Hier anpassen, falls es deinen Header/andere Menüs optisch verdeckt */
+            left: 0;
+            width: 100%;
+            z-index: 9999;
+            pointer-events: none; /* WICHTIG: Klicks gehen durch die Boxen durch, nichts wird blockiert! */
+            display: flex;
+            flex-direction: column; /* Auf kleinen Handys untereinander stapeln */
+            align-items: center;
+            gap: 15px; /* Abstand zwischen Nav-Box und Defi-Box auf Handys */
+            padding: 0 16px;
+            box-sizing: border-box;
+        }
+
+        .nav-ui-box {
+            background: rgba(14, 97, 39, 0.92);
+            color: white;
+            border-radius: 14px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            max-width: 90vw; /* Verhindert, dass die Boxen den Bildschirmrand berühren/sprengen */
+        }
+
+        #nav-box {
+            padding: 12px 24px;
+            min-width: 180px;
+            display: none;
+        }
+
+        #defi-distanz-box {
+            padding: 10px 16px;
+            min-width: 110px;
+            display: none;
+        }
+
+        /* Desktop & Tablets (ab 600px Breite): Platzierung anpassen */
+        @media (min-width: 600px) {
+            #nav-wrapper {
+                flex-direction: row;
+                justify-content: center; /* Navigations-Pfeil bleibt exakt in der Mitte */
+            }
+            #defi-distanz-box {
+                position: absolute;
+                right: 16px; /* Defi-Box wandert an den rechten Rand */
+                top: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 2. Gemeinsamen Wrapper (Container) erstellen
+    const wrapper = document.createElement('div');
+    wrapper.id = 'nav-wrapper';
+    document.body.appendChild(wrapper);
+
+    // 3. Navigationsanzeige (Pfeil) erstellen
     const navBox = document.createElement('div');
     navBox.id = 'nav-box';
-    navBox.style.cssText = `
-        display: none;
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(14, 97, 39, 0.92);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 14px;
-        font-family: Arial, sans-serif;
-        text-align: center;
-        z-index: 9999;
-        min-width: 180px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-        pointer-events: none;
-    `;
+    navBox.className = 'nav-ui-box';
     navBox.innerHTML = `
         <div id="nav-pfeil" style="font-size: 40px; line-height: 1;">⬆️</div>
         <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; margin-top: 4px;">-- m</div>
         <div id="nav-strasse" style="font-size: 13px; margin-top: 4px; opacity: 0.85;"></div>
     `;
-    document.body.appendChild(navBox);
+    wrapper.appendChild(navBox);
+
+    // 4. Entfernungsanzeige (Defi) erstellen
+    const distBox = document.createElement('div');
+    distBox.id = 'defi-distanz-box';
+    distBox.className = 'nav-ui-box';
+    distBox.innerHTML = `
+        <div style="font-size: 11px; opacity: 0.85; margin-bottom: 2px;">Entfernung zum Defi:</div>
+        <div id="defi-distanz-wert" style="font-size: 22px; font-weight: bold;">-- m</div>
+    `;
+    wrapper.appendChild(distBox);
 }
 
 // ===============================
@@ -54,13 +109,40 @@ function verbergeNavAnzeige() {
 }
 
 // ===============================
+// DEFI-ENTFERNUNG – Live-Anzeige aktualisieren
+// ===============================
+function updateDefiDistanz(meter) {
+    const box = document.getElementById('defi-distanz-box');
+    const val = document.getElementById('defi-distanz-wert');
+    if (!box || !val) return;
+
+    box.style.display = 'block';
+
+    // Anzeige: unter 1000m → Meter, ab 1000m → km
+    if (meter < 1000) {
+        val.textContent = Math.round(meter) + ' m';
+    } else {
+        val.textContent = (meter / 1000).toFixed(1) + ' km';
+    }
+
+}
+
+// ===============================
+// DEFI-ENTFERNUNG – Anzeige ausblenden
+// ===============================
+function hideDefiDistanz() {
+    const box = document.getElementById('defi-distanz-box');
+    if (box) box.style.display = 'none';
+}
+
+// ===============================
 // NAVIGATIONSANZEIGE – Richtungspfeil bestimmen
 // ===============================
 function bestimmePfeil(typ) {
     if (!typ) return '⬆️';
     const t = typ.toLowerCase();
-    if (t.includes('left'))  return '⬅️';
-    if (t.includes('right')) return '➡️';
+    if (t.includes('left'))   return '⬅️';
+    if (t.includes('right'))  return '➡️';
     if (t.includes('arrive')) return '🏁';
     return '⬆️';
 }
@@ -99,20 +181,5 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 
     }, function(err) {
         console.warn('GPS Fehler in NavAnzeige:', err);
-        
     }, { enableHighAccuracy: true, maximumAge: 1000 });
-}
-
-// ===============================
-// NAVIGATIONSANZEIGE – Entfernung zwischen zwei Punkten (in Metern)
-// ===============================
-function berechneEntfernung(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
