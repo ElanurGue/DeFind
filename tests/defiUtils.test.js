@@ -1,7 +1,8 @@
 //Distanz-Berechnung
 const {
     calculateDistance,
-    findNearestDefi
+    findNearestDefi,
+    isOffRoute
 } = require('../src/defiUtils');
 
 test('calculateDistance gibt 0 bei gleichen Koordinaten zurück', () => {
