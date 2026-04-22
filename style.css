@@ -155,5 +155,89 @@ nav a.active {
 
         }
 
+/* =========================
+        MAP UI (Leaflet)
+========================= */
+
+/* === NAV BOX === */
+#nav-box {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(14, 97, 39, 0.95); /* passt zu deinem Header */
+    color: white;
+    padding: 14px 20px;
+    border-radius: 14px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    display: none;
+    z-index: 9999;
+}
+
+#nav-arrow {
+    font-size: 32px;
+}
+
+#nav-distance {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#nav-street {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+/* === TOAST MESSAGES === */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    z-index: 9999;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    animation: fadeIn 0.3s ease;
+}
+
+.toast.success { background: #2ecc71; }
+.toast.error { background: #e74c3c; }
+.toast.info { background: #3498db; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* === POPUP === */
+.defi-popup {
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.defi-popup h4 {
+    margin: 0 0 6px;
+    color: #0e6127; /* angepasst */
+}
+
+.defi-popup button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    border: none;
+    border-radius: 6px;
+    background: #0e6127;
+    color: white;
+    cursor: pointer;
+}
+
+.defi-popup button:hover {
+    background: #0b4d1f;
+}
+
 
          
