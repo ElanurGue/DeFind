@@ -180,6 +180,7 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
             const pfeil = bestimmePfeil(naechsterSchritt.type);
             aktualisiereNavAnzeige(kleinsteEntfernung, pfeil, naechsterSchritt.road || '');
 
+            updateDefiDistanz(kleinsteEntfernung);
             // ── Sprachnavigation ────────────────────────────────────────────
 
             // Schritt bestimmen (links/rechts/geradeaus/arrive)
@@ -211,4 +212,22 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
     }, function(err) {
         console.warn('GPS Fehler in NavAnzeige:', err);
     }, { enableHighAccuracy: true, maximumAge: 1000 });
+}
+
+// ===============================
+// HILFSFUNKTION – Entfernung zwischen zwei Koordinaten in Metern
+// ===============================
+function berechneEntfernung(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Erdradius in Metern
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distanz in Metern
 }
