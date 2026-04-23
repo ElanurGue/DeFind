@@ -178,6 +178,7 @@ function startLiveTracking() {
                 const offRoute = calculateDistanceToRoute(currentRouteCoords, lat, lng);
                 if (shouldRecalculate(offRoute)) {
                     console.log(`↩️ ${Math.round(offRoute)}m von Route entfernt – berechne neu`);
+                    navController.onReroute();
                     recalculateRoute(lat, lng);
                 }
             }
@@ -261,6 +262,7 @@ function calculateRouteToNearestDefi() {
 function recalculateRoute(lat, lng) {
     if (!currentDefiTarget) return;
     verbergeNavAnzeige();
+    navController.onReroute(); 
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
 
     routingControl = _buildRoutingControl(
