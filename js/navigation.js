@@ -153,6 +153,8 @@ function bestimmePfeil(typ) {
 function starteNavAnzeige(routeSchritte, routePunkte) {
     if (!routeSchritte || routeSchritte.length === 0) return;
 
+    let letzterSchrittIndex = null;
+
     navigator.geolocation.watchPosition(function(pos) {
         const nutzerLat = pos.coords.latitude;
         const nutzerLon = pos.coords.longitude;
@@ -177,6 +179,33 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
         if (naechsterSchritt) {
             const pfeil = bestimmePfeil(naechsterSchritt.type);
             aktualisiereNavAnzeige(kleinsteEntfernung, pfeil, naechsterSchritt.road || '');
+
+            // ── Sprachnavigation ────────────────────────────────────────────
+
+            // Schritt bestimmen (links/rechts/geradeaus/arrive)
+            const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
+                           : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
+                           : naechsterSchritt.type?.toLowerCase().includes('arrive') ? 'arrive'
+                           : 'straight';
+
+            // Neuer Schritt → Sprachsystem informieren
+            if (naechsterSchritt.index !== letzterSchrittIndex) {
+                letzterSchrittIndex = naechsterSchritt.index;
+                navController.update({             // ← NEU
+                    distance:  kleinsteEntfernung,
+                    type:      richtung,
+                    street:    naechsterSchritt.road || '',
+                    connector: 'in die',
+                });
+            } else {
+                navController.update({             // ← NEU (laufendes Update für 30m/5m-Trigger)
+                    distance:  kleinsteEntfernung,
+                    type:      richtung,
+                    street:    naechsterSchritt.road || '',
+                    connector: 'in die',
+                });
+            }
+            // ────────────────────────────────────────────────────────────────
         }
 
     }, function(err) {
