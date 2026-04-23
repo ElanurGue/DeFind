@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
 /* Test in Konsole:
 
 // Test 1: 30m-Ansage mit Straßenname (TTS)
-voiceNav.announceApproaching(30, 'left', 'Margaretenstraße', 'in die');
+voiceNav.announceApproaching(30, 'left', 'Margaretenstraße', 'in_die');
 
 // Test 2: Direkte Abbiegung
 voiceNav.announceImmediate('right');

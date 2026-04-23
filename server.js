@@ -242,7 +242,7 @@ const HARDCODED_DEFIS = [
 const dbConfig = {
     host: process.env.MYSQLHOST || 'localhost',
     user: process.env.MYSQLUSER || 'root',
-    password: process.env.MYSQLPASSWORD || 'Suckmydick16!',
+    password: process.env.MYSQLPASSWORD || '',
     database: process.env.MYSQLDATABASE || 'defidb',
     port: process.env.MYSQLPORT || 3306,
     connectTimeout: 10000
