@@ -86,7 +86,6 @@ function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
 
     box.style.display = 'block';
     document.getElementById('nav-pfeil').textContent = pfeil;
-    document.getElementById('nav-entfernung').textContent = Math.round(entfernung) + ' m';
     document.getElementById('nav-strasse').textContent = strasse || '';
     document.getElementById('nav-entfernung').textContent = Math.min(30, Math.round(entfernung)) + ' m';
 }
@@ -185,6 +184,7 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 
         const pfeil = bestimmePfeil(naechsterSchritt.type);
         aktualisiereNavAnzeige(kleinsteEntfernung, pfeil, naechsterSchritt.road || '');
+
 
         const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
                        : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'

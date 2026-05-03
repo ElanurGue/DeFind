@@ -13,7 +13,7 @@ const {
     calculateDistanceToRoute,
     shouldRecalculate,
     findNearestDefiPure
-} = require('../js/routing.logic.js');
+} = require('../src/routing.logic.js');
 
 
 // ================================================================

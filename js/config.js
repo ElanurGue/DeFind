@@ -35,7 +35,7 @@ const heartIcon = L.icon({
 // ===============================
 // RAILWAY API KONFIGURATION
 // ===============================
-const RAILWAY_API = 'http://localhost:3000/api/standorte';
+const RAILWAY_API = 'https://defind-production.up.railway.app/api/standorte';
 
 // ===============================
 // OSRM Routing Service für Fußgänger
