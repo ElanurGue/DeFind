@@ -176,6 +176,7 @@ class VoiceNavigation {
    * die Wiedergabe, falls sie noch nicht läuft.
    * Jedes Segment ist entweder { type: "audio", src } oder { type: "tts", text }.
    */
+  
   _enqueue(segments) {
     this.queue.push(...segments);
     if (!this.isPlaying) this._playNext();
@@ -261,10 +262,18 @@ class NavigationController {
     this.voice = voiceNav;
 
     // Status für aktuellen Schritt
-    this._announced30m = false; // Wurde die 30-m-Ansage bereits gespielt?
-    this._announced5m  = false; // Wurde die 5-m-Ansage bereits gespielt?
-    this._currentStep  = null;  // Aktueller Navigationsschritt
-  }
+     this._announced30m = false; // Wurde die 30-m-Ansage bereits gespielt?
+     this._announced5m  = false; // Wurde die 5-m-Ansage bereits gespielt?
+     this._currentStep  = null;  // Aktueller Navigationsschritt
+     this._silent = false; // ← NEU
+    }
+
+    // Nur Status zurücksetzen, OHNE Audio
+    resetState() {
+      this._announced30m = false;
+      this._announced5m  = false;
+      this._currentStep  = null;
+    }
 
   /**
    * Muss bei jedem Positionsupdate aufgerufen werden.
@@ -282,6 +291,7 @@ class NavigationController {
       this._announced30m = false;
       this._announced5m  = false;
     }
+    if (this._silent) return; // ← NEU: still während Neuberechnung
 
     const dist = step.distance;
 
@@ -325,6 +335,12 @@ class NavigationController {
     this._announced30m = false;
     this._announced5m  = false;
     this._currentStep  = null;
+
+     // ── Stille für 4 Sekunden ──────────────────
+    this._silent = true;
+    setTimeout(() => { this._silent = false; }, 4000); // ← nach 4s wieder erlauben
+    // ──────────────────────────────────────────
+
   }
 }
 

@@ -42,6 +42,6 @@ const RAILWAY_API = 'http://localhost:3000/api/standorte';
 // ===============================
 const routingService = L.Routing.osrmv1({
     serviceUrl: 'https://router.project-osrm.org/route/v1',
-    profile: 'foot', // Fußgänger-Routen
+    profile: 'walking', // Fußgänger-Routen
     timeout: 10000
 });

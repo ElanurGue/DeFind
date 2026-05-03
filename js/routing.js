@@ -8,11 +8,18 @@
 // PRIVATE HILFSFUNKTIONEN
 // ================================================================
 
+// ── oben bei den globalen Variablen hinzufügen ──
+let isRecalculating = false;
+let lastRecalculateTime = 0;
+
 // ── Leaflet Routing Control bauen ────────────
 function _buildRoutingControl(from, to, color, onFound) {
     const ctrl = L.Routing.control({
         router: routingService,
-        waypoints: [L.latLng(from.lat, from.lng), L.latLng(to.lat, to.lng)],
+        waypoints: [
+            L.latLng(from.lat, from.lng), 
+            L.latLng(to.latitude ?? to.lat, to.longitude ?? to.lng)
+        ],
         routeWhileDragging: false,
         showAlternatives: false,
         addWaypoints: false,
@@ -22,6 +29,7 @@ function _buildRoutingControl(from, to, color, onFound) {
         lineOptions: { styles: [{ color, weight: 5, opacity: 0.8, dashArray: '10, 10' }] },
         createMarker: () => null
     }).addTo(map);
+
     if (onFound) ctrl.on('routesfound', onFound);
     return ctrl;
 }
@@ -177,9 +185,17 @@ function startLiveTracking() {
             if (routingControl && currentDefiTarget) {
                 const offRoute = calculateDistanceToRoute(currentRouteCoords, lat, lng);
                 if (shouldRecalculate(offRoute)) {
+                    const now = Date.now();
+                    if (isRecalculating || (now - lastRecalculateTime) < 5000) return;
+                    isRecalculating = true;
+                    lastRecalculateTime = now;
+
+                    console.log('🔄 onReroute wird aufgerufen!'); // ← NEU
+
                     console.log(`↩️ ${Math.round(offRoute)}m von Route entfernt – berechne neu`);
                     navController.onReroute();
-                    recalculateRoute(lat, lng);
+                    showMessage(_msgHtml('ℹ️ Route wird neu berechnet...', '', '#1a73e8'), 'info', 8000);
+                    setTimeout(() => recalculateRoute(lat, lng), 1500);
                 }
             }
         },
@@ -240,12 +256,28 @@ function calculateRouteToNearestDefi() {
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
     console.log(`📍 Route zu: ${nearest.adresse.straße} ${nearest.adresse.hausnummer}`);
 
+    // ← NUR EINMAL _buildRoutingControl aufrufen!
     routingControl = _buildRoutingControl(userPos, nearest, '#2363ed', function(e) {
         const route = e.routes[0];
         if (!route) return;
         currentRouteCoords = route.coordinates;
         starteNavAnzeige(route.instructions, route.coordinates);
         highlightTargetDefi(nearest);
+
+        // ── Startansage ──────────────────────────────────────
+        if (route.instructions && route.instructions.length > 0) {
+            const ersterSchritt = route.instructions[0];
+            const richtung = ersterSchritt.type?.toLowerCase().includes('left')  ? 'left'
+                           : ersterSchritt.type?.toLowerCase().includes('right') ? 'right'
+                           : 'straight';
+            voiceNav.announceApproaching(
+                Math.min(30, Math.round(ersterSchritt.distance / 10) * 10) || 10,
+                richtung,
+                ersterSchritt.road || '',
+                'in_die'
+            );
+        }
+        // ─────────────────────────────────────────────────────
     });
 
     routingControl.on('routingerror', function(e) {
@@ -261,17 +293,20 @@ function calculateRouteToNearestDefi() {
 // ── Route neu berechnen (Abweichung > 15 m) ──────────────────────
 function recalculateRoute(lat, lng) {
     if (!currentDefiTarget) return;
-    verbergeNavAnzeige();
-    navController.onReroute(); 
+    verbergeNavAnzeige(); 
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
 
     routingControl = _buildRoutingControl(
-        { lat, lng }, currentDefiTarget, '#1a73e8',
-        function(e) {
-            if (e.routes[0]) starteNavAnzeige(e.routes[0].instructions, e.routes[0].coordinates);
+    { lat, lng }, currentDefiTarget, '#1a73e8',
+    function(e) {
+        if (e.routes[0]) {
+            isRecalculating = false; // ← NEU: Sperre aufheben
+            currentRouteCoords = e.routes[0].coordinates;
+            starteNavAnzeige(e.routes[0].instructions, e.routes[0].coordinates);
+            //showMessage(_msgHtml('ℹ️ Route wurde neu berechnet', '', '#1a73e8'), 'info', 8000);
         }
-    );
-    showMessage(_msgHtml('ℹ️ Route wurde neu berechnet', '', '#1a73e8'), 'info', 8000);
+    }
+);
 }
 
 // ── Direkte Linie als Fallback ────────────────────────────────────
@@ -314,11 +349,29 @@ function routeToDefi(defi) {
 function createRouteToDefi(userPos, defi) {
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
     verbergeNavAnzeige();
+    navController.resetState(); // ← nur Status zurücksetzen, kein Audio
 
     routingControl = _buildRoutingControl(userPos, defi, '#0e6127', function(e) {
         if (e.routes[0]) {
             currentRouteCoords = e.routes[0].coordinates;
             starteNavAnzeige(e.routes[0].instructions, e.routes[0].coordinates);
+
+            // ── Startansage mit Verzögerung ──────────────────────────
+        setTimeout(() => {
+            const ersterSchritt = e.routes[0].instructions[0];
+            if (ersterSchritt) {
+                const richtung = ersterSchritt.type?.toLowerCase().includes('left')  ? 'left'
+                               : ersterSchritt.type?.toLowerCase().includes('right') ? 'right'
+                               : 'straight';
+                voiceNav.announceApproaching(
+                    Math.min(30, Math.round(ersterSchritt.distance / 10) * 10) || 10,
+                    richtung,
+                    ersterSchritt.road || '',
+                    'in_die'
+                );
+            }
+        }, 2000); // ← 2 Sekunden warten
+        // ─────────────────────────────────────────────────────────
         }
     });
 
