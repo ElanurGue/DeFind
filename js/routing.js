@@ -162,6 +162,7 @@ function startLiveTracking() {
 
     positionWatchId = navigator.geolocation.watchPosition(
         function(pos) {
+            if (isRecalculating) return;
             const { latitude: lat, longitude: lng, accuracy } = pos.coords;
             console.log(`📍 Live-Update: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
 
@@ -189,10 +190,10 @@ function startLiveTracking() {
                     if (isRecalculating || (now - lastRecalculateTime) < 5000) return;
                     isRecalculating = true;
                     lastRecalculateTime = now;
-
+                    
                     console.log(`↩️ ${Math.round(offRoute)}m von Route entfernt – berechne neu`);
                     navController.onReroute();
-                    showMessage(_msgHtml('ℹ️ Route wird neu berechnet...', '', '#1a73e8'), 'info', 8000);
+                    //showMessage(_msgHtml('ℹ️ Route wird neu berechnet...', '', '#1a73e8'), 'info', 8000);
                     setTimeout(() => recalculateRoute(lat, lng), 1500);
                 }
             }
@@ -343,6 +344,7 @@ function routeToDefi(defi) {
 
 function createRouteToDefi(userPos, defi) {
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+    currentRouteCoords = [];
     verbergeNavAnzeige();
     navController.resetState();
 

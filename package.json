@@ -3,6 +3,9 @@
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0"
   },
+  "jest": {
+    "testEnvironment": "jsdom"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",

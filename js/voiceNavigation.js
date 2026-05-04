@@ -330,7 +330,6 @@ class NavigationController {
    * Spielt "Route wird neu berechnet." ab.
    */
   onReroute() {
-    this.voice.announceRerouting();
     // Status zurücksetzen, damit nach Neuberechnung neue Ansagen kommen
     this._announced30m = false;
     this._announced5m  = false;
