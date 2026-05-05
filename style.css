@@ -1,11 +1,70 @@
-/* Header mit Logo und Navigation */
+/* =========================
+   CSS VARIABLEN (Light/Dark)
+========================= */
+:root {
+    --bg: #ffffff;
+    --text: #000000;
+    --header-bg: #ffffff;
+    --header-shadow: #0e6127;
+    --nav-link: #000000;
+    --nav-active-color: #0e6127;
+    --nav-active-border: #0e6127;
+    --nav-mobile-bg: #ffffff;
+    --nav-mobile-open-bg: #e8f5e9;
+    --nav-mobile-open-text: #0e6127;
+    --nav-mobile-separator: #e8f5e9;
+    --hamburger-color: #0e6127;
+    --popup-heading: #0e6127;
+    --popup-btn-bg: #0e6127;
+    --popup-btn-hover: #0b4d1f;
+    --nav-box-bg: rgba(14, 97, 39, 0.95);
+    --dark-toggle-bg: #0e6127;
+    --dark-toggle-hover: #0b4d1f;
+    --dark-toggle-shadow: rgba(14, 97, 39, 0.4);
+}
+
+body.dark {
+    --bg: #121212;
+    --text: #e8e8e8;
+    --header-bg: #1a1a1a;
+    --header-shadow: #0b4d1f;
+    --nav-link: #e8e8e8;
+    --nav-active-color: #4caf70;
+    --nav-active-border: #4caf70;
+    --nav-mobile-bg: #1a1a1a;
+    --nav-mobile-open-bg: #1a2e1f;
+    --nav-mobile-open-text: #4caf70;
+    --nav-mobile-separator: #2a2a2a;
+    --hamburger-color: #4caf70;
+    --popup-heading: #4caf70;
+    --popup-btn-bg: #1e5c35;
+    --popup-btn-hover: #0e6127;
+    --nav-box-bg: rgba(30, 92, 53, 0.95);
+    --dark-toggle-bg: #1e5c35;
+    --dark-toggle-hover: #0e6127;
+    --dark-toggle-shadow: rgba(76, 175, 112, 0.4);
+}
+
+/* Sanfter Übergang beim Wechsel */
+body, header, nav, nav a, .defi-popup, #nav-box {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+/* =========================
+   Header mit Logo und Navigation
+========================= */
 header {
-    background-color: #ffffff;
+    background-color: var(--header-bg);
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 10px #0e6127;
+    box-shadow: 0 2px 10px var(--header-shadow);
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -13,7 +72,7 @@ header {
 }
 
 .logo-container {
-    width: 150px; 
+    width: 150px;
 }
 
 .logo {
@@ -27,12 +86,11 @@ nav ul {
     gap: 2rem;
 }
 
-
 nav a {
-    color: #000000;
+    color: var(--nav-link);
     text-decoration: none;
     font-weight: 500;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, color 0.3s;
 }
 
 nav a:hover {
@@ -40,123 +98,124 @@ nav a:hover {
 }
 
 nav a.active {
-    color: #0e6127;
+    color: var(--nav-active-color);
     font-weight: bold;
-    border-bottom: 3px solid #0e6127;
+    border-bottom: 3px solid var(--nav-active-border);
     padding-bottom: 0.5rem;
 }
 
-/* Hamburger Menu Button */
-        .hamburger {
-            display: none;
-            flex-direction: column;
-            cursor: pointer;
-            gap: 5px;
-            z-index: 1000;
-        }
+/* =========================
+   Hamburger Menu Button
+========================= */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    gap: 5px;
+    z-index: 1000;
+}
 
-        .hamburger span {
-            width: 30px;
-            height: 3px;
-            background-color: #0e6127;
-            transition: all 0.3s ease;
-            border-radius: 2px;
-        }
+.hamburger span {
+    width: 30px;
+    height: 3px;
+    background-color: var(--hamburger-color);
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
 
-        .hamburger.active span:nth-child(1) {
-            transform: rotate(45deg) translate(8px, 8px);
-        }
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+}
 
-        .hamburger.active span:nth-child(2) {
-            opacity: 0;
-        }
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
 
-        .hamburger.active span:nth-child(3) {
-            transform: rotate(-45deg) translate(7px, -7px);
-        }
-
-
- @media (max-width: 768px) {
-
-            header {
-                padding: 1rem;
-                flex-wrap: wrap;
-            }
-
-            .hamburger {
-                display: flex;
-            }
-
-            nav {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background-color: #ffffff;
-                box-shadow: 0 4px 10px rgba(14, 97, 39, 0.2);
-                max-height: 0;
-                overflow: hidden;
-                transition: max-height 0.3s ease;
-                display: block;
-                z-index: 900; /*damit Button vor nav und map liegt, so kann man auf Menü-button klicken*/
-            }
-
-            nav.active {
-                max-height: 400px;
-                border-bottom: none;
-                padding-bottom: 1rem;
-                background-color: #e8f5e9;
-                color: #0e6127;
-            }
-
-            nav ul {
-                flex-direction: column;
-                gap: 0;
-                padding: 1rem 0;
-                margin: 0; 
-            }
-
-            nav ul li {
-           
-                text-align: center;
-                border-bottom: 1px solid #e8f5e9;
-            }
-
-            nav ul li:last-child {
-                border-bottom: none;
-            }
-
-            nav a {
-                display: block;
-                padding: 1rem;
-                color: #0e6127;
-                text-decoration: none;
-            }
-
-            nav a.active {
-                border-bottom: none;
-                padding-bottom: 1rem;
-                background-color: #e8f5e9;
-            }
-
-            .container {
-                padding: 0 15px;
-                margin: 20px auto;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .accordion-header {
-                font-size: 1em;
-                padding: 15px;
-            }
-
-        }
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
 
 /* =========================
-        MAP UI (Leaflet)
+   Responsive / Mobile
+========================= */
+@media (max-width: 768px) {
+    header {
+        padding: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--nav-mobile-bg);
+        box-shadow: 0 4px 10px rgba(14, 97, 39, 0.2);
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        display: block;
+        z-index: 900;
+    }
+
+    nav.active {
+        max-height: 400px;
+        border-bottom: none;
+        padding-bottom: 1rem;
+        background-color: var(--nav-mobile-open-bg);
+        color: var(--nav-mobile-open-text);
+    }
+
+    nav ul {
+        flex-direction: column;
+        gap: 0;
+        padding: 1rem 0;
+        margin: 0;
+    }
+
+    nav ul li {
+        text-align: center;
+        border-bottom: 1px solid var(--nav-mobile-separator);
+    }
+
+    nav ul li:last-child {
+        border-bottom: none;
+    }
+
+    nav a {
+        display: block;
+        padding: 1rem;
+        color: var(--nav-mobile-open-text);
+        text-decoration: none;
+    }
+
+    nav a.active {
+        border-bottom: none;
+        padding-bottom: 1rem;
+        background-color: var(--nav-mobile-open-bg);
+    }
+
+    .container {
+        padding: 0 15px;
+        margin: 20px auto;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    .accordion-header {
+        font-size: 1em;
+        padding: 15px;
+    }
+}
+
+/* =========================
+   MAP UI (Leaflet)
 ========================= */
 
 /* === NAV BOX === */
@@ -165,12 +224,12 @@ nav a.active {
     top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(14, 97, 39, 0.95); /* passt zu deinem Header */
+    background: var(--nav-box-bg);
     color: white;
     padding: 14px 20px;
     border-radius: 14px;
     text-align: center;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
     display: none;
     z-index: 9999;
 }
@@ -200,17 +259,17 @@ nav a.active {
     color: white;
     font-size: 14px;
     z-index: 9999;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     animation: fadeIn 0.3s ease;
 }
 
 .toast.success { background: #2ecc71; }
-.toast.error { background: #e74c3c; }
-.toast.info { background: #3498db; }
+.toast.error   { background: #e74c3c; }
+.toast.info    { background: #3498db; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translate(-50%, 10px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* === POPUP === */
@@ -221,7 +280,7 @@ nav a.active {
 
 .defi-popup h4 {
     margin: 0 0 6px;
-    color: #0e6127; /* angepasst */
+    color: var(--popup-heading);
 }
 
 .defi-popup button {
@@ -230,14 +289,45 @@ nav a.active {
     margin-top: 8px;
     border: none;
     border-radius: 6px;
-    background: #0e6127;
+    background: var(--popup-btn-bg);
     color: white;
     cursor: pointer;
+    transition: background 0.2s ease;
 }
 
 .defi-popup button:hover {
-    background: #0b4d1f;
+    background: var(--popup-btn-hover);
 }
 
+/* =========================
+   DARK MODE FLOATING BUTTON
+========================= */
+#dark-mode-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--dark-toggle-bg);
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px var(--dark-toggle-shadow);
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-         
+#dark-mode-toggle:hover {
+    background-color: var(--dark-toggle-hover);
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px var(--dark-toggle-shadow);
+}
+
+#dark-mode-toggle:active {
+    transform: scale(0.95);
+}
