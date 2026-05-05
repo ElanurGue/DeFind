@@ -1,24 +1,25 @@
-
 .impressum-container {
     width: 90%;
     max-width: 800px;
     margin: 2rem auto;
     padding: 2rem;
-    background-color: white;
+    background-color: var(--card-bg, white);
     border-radius: 10px;
     box-shadow: 0 4px 20px #0e6127;
     text-align: center;
-   font-family: Arial, Helvetica, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .impressum-container h1 {
     color: black;
-    display: inline-block;   
+    display: inline-block;
     margin: 2rem auto 1.5rem;
     background-color: #0e6127D7;
     padding: 0.6rem 1.2rem;
     border-radius: 40px;
-    min-width: 260px;   
+    min-width: 260px;
     max-width: 90%;
 }
 
@@ -26,9 +27,8 @@
     line-height: 1.8;
     text-align: center;
     padding: 0 20px;
-
+    color: var(--text);
 }
-
 
 .links {
     margin: 1.5rem 0;
@@ -58,5 +58,13 @@
         font-size: 1.5em;
         padding: 0.4rem 0.8rem;
     }
-    
+}
+
+/* Dark Mode */
+body.dark .impressum-container {
+    background-color: #1e1e1e;
+}
+
+body.dark .impressum-content p {
+    color: #ccc;
 }

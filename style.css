@@ -43,6 +43,8 @@ body.dark {
     --dark-toggle-bg: #1e5c35;
     --dark-toggle-hover: #0e6127;
     --dark-toggle-shadow: rgba(76, 175, 112, 0.4);
+    --card-bg: #1e1e1e;
+    --text-muted: #aaaaaa;
 }
 
 /* Sanfter Übergang beim Wechsel */
