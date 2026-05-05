@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "cypress": "^15.14.2",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0"
   },
@@ -10,5 +11,28 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "mysql2": "^3.22.2"
-  }
+  },
+  "name": "defind",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ElanurGue/DeFind.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ElanurGue/DeFind/issues"
+  },
+  "homepage": "https://github.com/ElanurGue/DeFind#readme"
 }

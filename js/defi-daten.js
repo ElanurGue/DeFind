@@ -63,17 +63,18 @@ function displayDefisOnMap() {
     defiList.forEach(defi => {
         const marker = L.marker([defi.latitude, defi.longitude], {
             icon: heartIcon,
-            title: `${defi.adresse.straße} ${defi.adresse.hausnummer}`
+            title: `${defi.adresse.straße} ${defi.adresse.hausnummer}`,
+            dataCy: 'defi-marker'
         }).addTo(map);
         
         //Popup Fenster für jeden Defi Marker
         marker.bindPopup(`
-            <div style="font-family: Arial; min-width: 220px;">
+            <div style="font-family: Arial; min-width: 220px;" data-cy="defi-popup">
                 <h4 style="margin: 0 0 8px 0; color: #d63031; font-size: 16px;">
                     Defibrillator
                 </h4>
 
-                <div style="font-size: 14px; margin-bottom: 6px;">
+                <div style="font-size: 14px; margin-bottom: 6px;" data-cy="defi-adresse">
                     <strong>${defi.adresse.straße} ${defi.adresse.hausnummer}</strong><br>
                     ${defi.adresse.plz} ${defi.adresse.stadt}
                 </div>
@@ -94,6 +95,7 @@ function displayDefisOnMap() {
                         cursor: pointer;
                     "
                     onclick="routeToDefi(${JSON.stringify(defi).replace(/"/g, '&quot;')})"
+                    data-cy="start-navigation"
                 >
                     Führe zum Defi 
                 </button>
