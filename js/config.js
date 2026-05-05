@@ -2,6 +2,7 @@
 // Karte initialisieren (5. Bezirk Wien)
 // ===============================
 const map = L.map('map').setView([48.192, 16.352], 15);
+window.mapInstance = map 
 
 // ===============================
 // OpenStreetMap Tiles

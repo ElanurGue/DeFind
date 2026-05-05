@@ -398,4 +398,19 @@ function geoFindMeForDefi(callback) {
             );
         }
     });
+
+        // Am Ende von routing.js hinzufügen
+    window.updateUserPosition = function(lat, lng) {
+    if (currentUserMarker) {
+        currentUserMarker.setLatLng([lat, lng])
+    }
+    // Reroute triggern
+    if (routingControl && currentDefiTarget) {
+        const offRoute = calculateDistanceToRoute(currentRouteCoords, lat, lng)
+        if (offRoute > 15) {
+        navController.onReroute()
+        recalculateRoute(lat, lng)
+        }
+    }
+    }
 }
