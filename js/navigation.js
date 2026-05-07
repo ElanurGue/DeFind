@@ -104,7 +104,7 @@ function createNavBox() {
 function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
     const box = document.getElementById('nav-box');
     if (!box) return;
-    box.style.display = 'block';
+    box.style.display = 'flex';    // ← flex statt block, damit .nav-inner funktioniert
     document.getElementById('nav-pfeil').textContent = pfeil;
     document.getElementById('nav-strasse').textContent = strasse || '';
     document.getElementById('nav-entfernung').textContent = Math.round(entfernung) + ' m';
