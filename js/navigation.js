@@ -204,7 +204,6 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 
         // ✅ Beide Boxen gleichzeitig aktualisieren
         aktualisiereNavAnzeige(echteEntfernung, pfeil, naechsterSchritt.road || '');
-        updateDefiDistanz(kleinsteEntfernung); // ← Distanz zum Defi immer mitaktualisieren
 
         const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
                        : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
