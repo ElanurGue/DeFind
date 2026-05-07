@@ -14,10 +14,11 @@ function createNavBox() {
             z-index: 9999;
             pointer-events: none;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            padding: 0 16px;
+            flex-direction: row;       /* ← immer row, auch mobil */
+            justify-content: center;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 12px;
             box-sizing: border-box;
         }
         .nav-ui-box {
@@ -27,28 +28,44 @@ function createNavBox() {
             font-family: Arial, sans-serif;
             text-align: center;
             box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-            max-width: 90vw;
+            flex-shrink: 0;
         }
         #nav-box {
-            padding: 12px 24px;
-            min-width: 180px;
+            padding: 10px 16px;
+            flex: 1 1 auto;
+            max-width: 65vw;           /* ← lässt Platz für Distanz-Box */
             display: none;
+        }
+        #nav-box #nav-pfeil       { font-size: 32px; line-height: 1; }
+        #nav-box #nav-entfernung  { font-size: 18px; font-weight: bold; margin-top: 2px; }
+        #nav-box #nav-strasse     {
+            font-size: 11px; margin-top: 2px; opacity: 0.85;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         #defi-distanz-box {
-            padding: 10px 16px;
-            min-width: 110px;
+            padding: 10px 12px;
+            flex: 0 0 auto;
+            min-width: 90px;
             display: none;
         }
+        #defi-distanz-box #defi-distanz-wert { font-size: 18px; font-weight: bold; }
+
+        /* Größere Screens: Distanz-Box rechts außen */
         @media (min-width: 600px) {
-            #nav-wrapper {
-                flex-direction: row;
-                justify-content: center;
+            #nav-box {
+                max-width: 340px;
+                padding: 12px 24px;
             }
+            #nav-box #nav-pfeil       { font-size: 40px; }
+            #nav-box #nav-entfernung  { font-size: 22px; }
+            #nav-box #nav-strasse     { font-size: 13px; }
             #defi-distanz-box {
                 position: absolute;
                 right: 16px;
-                top: 0;
+                top: 8px;
+                padding: 10px 16px;
             }
+            #defi-distanz-box #defi-distanz-wert { font-size: 22px; }
         }
     `;
     document.head.appendChild(style);
