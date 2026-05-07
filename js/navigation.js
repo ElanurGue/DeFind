@@ -33,7 +33,7 @@ function createNavBox() {
             padding: 10px 16px;
             flex: 1 1 auto;
             max-width: 65vw;
-            visibility: hidden;
+            visibility: display;
         }
         #nav-box .nav-inner {
             display: flex;
@@ -63,7 +63,7 @@ function createNavBox() {
             padding: 10px 12px;
             flex: 0 0 auto;
             min-width: 90px;
-            visibility: hidden;
+            visibility: display;
         }
         #defi-distanz-box #defi-distanz-wert {
             font-size: 18px;
@@ -134,7 +134,7 @@ function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
 // ===============================
 function verbergeNavAnzeige() {
     const box = document.getElementById('nav-box');
-    if (box) box.style.visibility = 'hidden';
+    if (box) box.style.visibility = 'display';
 }
 
 // ===============================
@@ -157,7 +157,7 @@ function updateDefiDistanz(meter) {
 // ===============================
 function hideDefiDistanz() {
     const box = document.getElementById('defi-distanz-box');
-    if (box) box.style.visibility = 'hidden';
+    if (box) box.style.visibility = 'display';
 }
 
 // ===============================

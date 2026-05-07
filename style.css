@@ -231,12 +231,17 @@ nav a.active {
 
 /* === NAV BOX === */
 #nav-box {
-    display: none;
+    padding: 10px 16px;
+    flex: 1 1 auto;
+    max-width: 65vw;
+    display: none;    /* ← none statt visibility: hidden */
 }
-#nav-box .nav-inner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+
+#defi-distanz-box {
+    padding: 10px 12px;
+    flex: 0 0 auto;
+    min-width: 90px;
+    display: none;    /* ← none statt visibility: hidden */
 }
 
 #nav-arrow {
