@@ -221,7 +221,7 @@ nav a.active {
 ========================= */
 #map {
     width: 100%;
-    height: calc(100vh - 80px); /* 80px = Header-Höhe */
+    height: calc(100vh - 60px); /* 60px = Header-Höhe */
     z-index: 1;
 }
 
