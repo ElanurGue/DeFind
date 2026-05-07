@@ -78,10 +78,14 @@ function createNavBox() {
     navBox.id = 'nav-box';
     navBox.className = 'nav-ui-box';
     navBox.innerHTML = `
-        <div id="nav-pfeil" style="font-size: 40px; line-height: 1;">⬆️</div>
-        <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; margin-top: 4px;">-- m</div>
-        <div id="nav-strasse" style="font-size: 13px; margin-top: 4px; opacity: 0.85;"></div>
-    `;
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <div id="nav-pfeil" style="font-size: 40px; line-height: 1; flex-shrink: 0;">⬆️</div>
+        <div style="text-align: left;">
+            <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; line-height: 1.2;">-- m</div>
+            <div id="nav-strasse" style="font-size: 13px; margin-top: 2px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;"></div>
+        </div>
+    </div>
+`;
     wrapper.appendChild(navBox);
 
     const distBox = document.createElement('div');
