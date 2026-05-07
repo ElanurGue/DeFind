@@ -231,18 +231,12 @@ nav a.active {
 
 /* === NAV BOX === */
 #nav-box {
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--nav-box-bg);
-    color: white;
-    padding: 14px 20px;
-    border-radius: 14px;
-    text-align: left;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
     display: none;
-    z-index: 99999; 
+}
+#nav-box .nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 #nav-arrow {
