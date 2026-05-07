@@ -288,7 +288,6 @@ function recalculateRoute(lat, lng) {
     msg.style.display = 'block'
     setTimeout(() => { msg.style.display = 'none' }, 15000)
 
-    verbergeNavAnzeige();
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
 
     routingControl = _buildRoutingControl(
@@ -343,7 +342,6 @@ function routeToDefi(defi) {
 function createRouteToDefi(userPos, defi) {
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
     currentRouteCoords = [];
-    verbergeNavAnzeige();
     navController.resetState();
 
     routingControl = _buildRoutingControl(userPos, defi, '#0e6127', function(e) {
