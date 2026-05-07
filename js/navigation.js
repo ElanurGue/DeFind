@@ -14,7 +14,7 @@ function createNavBox() {
             z-index: 9999;
             pointer-events: none;
             display: flex;
-            flex-direction: row;       /* ← immer row, auch mobil */
+            flex-direction: row;
             justify-content: center;
             align-items: flex-start;
             gap: 10px;
@@ -30,42 +30,40 @@ function createNavBox() {
             box-shadow: 0 4px 16px rgba(0,0,0,0.25);
             flex-shrink: 0;
         }
+
+        /* NAV-BOX (Pfeil + Straße) */
         #nav-box {
             padding: 10px 16px;
             flex: 1 1 auto;
-            max-width: 65vw;           /* ← lässt Platz für Distanz-Box */
+            max-width: 55vw;
             display: none;
         }
-        #nav-box #nav-pfeil       { font-size: 32px; line-height: 1; }
-        #nav-box #nav-entfernung  { font-size: 18px; font-weight: bold; margin-top: 2px; }
-        #nav-box #nav-strasse     {
-            font-size: 11px; margin-top: 2px; opacity: 0.85;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
+
+        /* DEFI-DISTANZ-BOX */
         #defi-distanz-box {
             padding: 10px 12px;
             flex: 0 0 auto;
             min-width: 90px;
             display: none;
         }
-        #defi-distanz-box #defi-distanz-wert { font-size: 18px; font-weight: bold; }
+        #defi-distanz-box #defi-distanz-wert {
+            font-size: 18px;
+            font-weight: bold;
+        }
 
-        /* Größere Screens: Distanz-Box rechts außen */
+        /* Größere Screens */
         @media (min-width: 600px) {
             #nav-box {
                 max-width: 340px;
                 padding: 12px 24px;
             }
-            #nav-box #nav-pfeil       { font-size: 40px; }
-            #nav-box #nav-entfernung  { font-size: 22px; }
-            #nav-box #nav-strasse     { font-size: 13px; }
             #defi-distanz-box {
-                position: absolute;
-                right: 16px;
-                top: 8px;
                 padding: 10px 16px;
+                min-width: 110px;
             }
-            #defi-distanz-box #defi-distanz-wert { font-size: 22px; }
+            #defi-distanz-box #defi-distanz-wert {
+                font-size: 22px;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -74,20 +72,23 @@ function createNavBox() {
     wrapper.id = 'nav-wrapper';
     document.body.appendChild(wrapper);
 
+    // NAV-BOX (Pfeil + Entfernung + Straße)
     const navBox = document.createElement('div');
     navBox.id = 'nav-box';
     navBox.className = 'nav-ui-box';
     navBox.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 12px;">
-        <div id="nav-pfeil" style="font-size: 40px; line-height: 1; flex-shrink: 0;">⬆️</div>
-        <div style="text-align: left;">
-            <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; line-height: 1.2;">-- m</div>
-            <div id="nav-strasse" style="font-size: 13px; margin-top: 2px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;"></div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="nav-pfeil" style="font-size: 40px; line-height: 1; flex-shrink: 0;">⬆️</div>
+            <div style="text-align: left;">
+                <div id="nav-entfernung" style="font-size: 22px; font-weight: bold; line-height: 1.2;">-- m</div>
+                <div id="nav-strasse" style="font-size: 13px; margin-top: 2px; opacity: 0.85;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;"></div>
+            </div>
         </div>
-    </div>
-`;
+    `;
     wrapper.appendChild(navBox);
 
+    // DEFI-DISTANZ-BOX (Entfernung zum Defi)
     const distBox = document.createElement('div');
     distBox.id = 'defi-distanz-box';
     distBox.className = 'nav-ui-box';
@@ -104,7 +105,7 @@ function createNavBox() {
 function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
     const box = document.getElementById('nav-box');
     if (!box) return;
-    box.style.display = 'flex';    // ← flex statt block, damit .nav-inner funktioniert
+    box.style.display = 'flex';
     document.getElementById('nav-pfeil').textContent = pfeil;
     document.getElementById('nav-strasse').textContent = strasse || '';
     document.getElementById('nav-entfernung').textContent = Math.round(entfernung) + ' m';
@@ -160,7 +161,6 @@ let _navWatchId = null;
 let _aktuelleSchritte = [];
 let _aktuellePunkte   = [];
 
-// Erlaubte Distanzen für Sprachansage
 const ERLAUBTE_DISTANZEN = [5, 10, 15, 20, 25, 30];
 
 // ===============================
@@ -169,11 +169,9 @@ const ERLAUBTE_DISTANZEN = [5, 10, 15, 20, 25, 30];
 function starteNavAnzeige(routeSchritte, routePunkte) {
     if (!routeSchritte || routeSchritte.length === 0) return;
 
-    // Neue Route speichern
     _aktuelleSchritte = routeSchritte;
     _aktuellePunkte   = routePunkte;
 
-    // Watcher nur einmal starten
     if (_navWatchId !== null) return;
 
     _navWatchId = navigator.geolocation.watchPosition(function(pos) {
@@ -182,7 +180,6 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 
         if (!_aktuelleSchritte || _aktuelleSchritte.length === 0) return;
 
-        // Nächsten Schritt finden (nächster Routenpunkt)
         let naechsterSchritt = null;
         let kleinsteEntfernung = Infinity;
 
@@ -203,28 +200,29 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
         if (!naechsterSchritt) return;
 
         const pfeil = bestimmePfeil(naechsterSchritt.type);
+        const echteEntfernung = naechsterSchritt.distance;
 
-// Echte Entfernung bis zur Abbiegung (nicht GPS-Abstand zum Punkt)
-const echteEntfernung = naechsterSchritt.distance;
-aktualisiereNavAnzeige(echteEntfernung, pfeil, naechsterSchritt.road || '');
+        // ✅ Beide Boxen gleichzeitig aktualisieren
+        aktualisiereNavAnzeige(echteEntfernung, pfeil, naechsterSchritt.road || '');
+        updateDefiDistanz(kleinsteEntfernung); // ← Distanz zum Defi immer mitaktualisieren
 
-const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
-               : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
-               : naechsterSchritt.type?.toLowerCase().includes('arrive') ? 'arrive'
-               : 'straight';
+        const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
+                       : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
+                       : naechsterSchritt.type?.toLowerCase().includes('arrive') ? 'arrive'
+                       : 'straight';
 
-const angezeigteEntfernung = Math.round(echteEntfernung);
-const distFuerStimme = ERLAUBTE_DISTANZEN.includes(angezeigteEntfernung)
-    ? angezeigteEntfernung
-    : -1;
+        const angezeigteEntfernung = Math.round(echteEntfernung);
+        const distFuerStimme = ERLAUBTE_DISTANZEN.includes(angezeigteEntfernung)
+            ? angezeigteEntfernung
+            : -1;
 
-navController.update({
-    index:     naechsterSchritt.index,
-    distance:  distFuerStimme,
-    type:      richtung,
-    street:    naechsterSchritt.road || '',
-    connector: 'in_die',
-});
+        navController.update({
+            index:     naechsterSchritt.index,
+            distance:  distFuerStimme,
+            type:      richtung,
+            street:    naechsterSchritt.road || '',
+            connector: 'in_die',
+        });
 
     }, function(err) {
         console.warn('GPS Fehler in NavAnzeige:', err);
@@ -242,4 +240,5 @@ function stoppeNavAnzeige() {
     _aktuelleSchritte = [];
     _aktuellePunkte   = [];
     verbergeNavAnzeige();
+    hideDefiDistanz(); // ← auch Distanz-Box ausblenden beim Stoppen
 }
