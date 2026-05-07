@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     
+    
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> 
@@ -81,6 +82,18 @@
 <script>
     window.onload = function() {
         createNavBox(); 
+    };
+</script>
+<script>
+    window.onload = function() {
+        createNavBox();
+        
+        // ← NEU: Audio entsperren beim ersten Klick
+        document.addEventListener('click', function unlock() {
+            const a = new Audio();
+            a.play().catch(() => {});
+            document.removeEventListener('click', unlock);
+        }, { once: true });
     };
 </script>
 <script src="js/darkmode.js"></script>

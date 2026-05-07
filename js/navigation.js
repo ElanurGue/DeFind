@@ -1,5 +1,5 @@
 // ===============================
-// NAVIGATIONSANZEIGE – Box erstellen (wird einmalig beim Start eingefügt)
+// NAVIGATIONSANZEIGE – Box erstellen
 // ===============================
 function createNavBox() {
     if (document.getElementById('nav-wrapper')) return;
@@ -83,11 +83,10 @@ function createNavBox() {
 function aktualisiereNavAnzeige(entfernung, pfeil, strasse) {
     const box = document.getElementById('nav-box');
     if (!box) return;
-
     box.style.display = 'block';
     document.getElementById('nav-pfeil').textContent = pfeil;
     document.getElementById('nav-strasse').textContent = strasse || '';
-    document.getElementById('nav-entfernung').textContent = Math.min(30, Math.round(entfernung)) + ' m';
+    document.getElementById('nav-entfernung').textContent = Math.round(entfernung) + ' m';
 }
 
 // ===============================
@@ -105,9 +104,7 @@ function updateDefiDistanz(meter) {
     const box = document.getElementById('defi-distanz-box');
     const val = document.getElementById('defi-distanz-wert');
     if (!box || !val) return;
-
     box.style.display = 'block';
-
     if (meter < 1000) {
         val.textContent = Math.round(meter) + ' m';
     } else {
@@ -136,15 +133,17 @@ function bestimmePfeil(typ) {
 }
 
 // ===============================
-// NAVIGATIONSANZEIGE – Aktueller GPS-Watcher (nur einer aktiv!)
+// GPS-Watcher Variablen
 // ===============================
-let _navWatchId = null;         // ← globale ID des aktiven Watchers
-let _aktuelleSchritte = [];     // ← aktuelle Routenschritte
-let _aktuellePunkte = [];       // ← aktuelle Routenpunkte
-let _letzterSchrittIndex = null;
+let _navWatchId = null;
+let _aktuelleSchritte = [];
+let _aktuellePunkte   = [];
+
+// Erlaubte Distanzen für Sprachansage
+const ERLAUBTE_DISTANZEN = [5, 10, 15, 20, 25, 30];
 
 // ===============================
-// NAVIGATIONSANZEIGE – Route aktualisieren (ohne neuen Watcher)
+// NAVIGATIONSANZEIGE – Route starten
 // ===============================
 function starteNavAnzeige(routeSchritte, routePunkte) {
     if (!routeSchritte || routeSchritte.length === 0) return;
@@ -152,9 +151,8 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
     // Neue Route speichern
     _aktuelleSchritte = routeSchritte;
     _aktuellePunkte   = routePunkte;
-    _letzterSchrittIndex = null; // Reset damit Ansagen neu starten
 
-    // Watcher nur einmal starten!
+    // Watcher nur einmal starten
     if (_navWatchId !== null) return;
 
     _navWatchId = navigator.geolocation.watchPosition(function(pos) {
@@ -163,17 +161,18 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 
         if (!_aktuelleSchritte || _aktuelleSchritte.length === 0) return;
 
+        // Nächsten Schritt finden (nächster Routenpunkt)
         let naechsterSchritt = null;
         let kleinsteEntfernung = Infinity;
 
         _aktuelleSchritte.forEach(function(schritt) {
             const idx = schritt.index;
             if (!_aktuellePunkte[idx]) return;
-
-            const schrittLat = _aktuellePunkte[idx].lat;
-            const schrittLng = _aktuellePunkte[idx].lng;
-            const entf = berechneEntfernung(nutzerLat, nutzerLon, schrittLat, schrittLng);
-
+            const entf = berechneEntfernung(
+                nutzerLat, nutzerLon,
+                _aktuellePunkte[idx].lat,
+                _aktuellePunkte[idx].lng
+            );
             if (entf < kleinsteEntfernung) {
                 kleinsteEntfernung = entf;
                 naechsterSchritt = schritt;
@@ -183,31 +182,28 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
         if (!naechsterSchritt) return;
 
         const pfeil = bestimmePfeil(naechsterSchritt.type);
-        aktualisiereNavAnzeige(kleinsteEntfernung, pfeil, naechsterSchritt.road || '');
 
+// Echte Entfernung bis zur Abbiegung (nicht GPS-Abstand zum Punkt)
+const echteEntfernung = naechsterSchritt.distance;
+aktualisiereNavAnzeige(echteEntfernung, pfeil, naechsterSchritt.road || '');
 
-        const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
-                       : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
-                       : naechsterSchritt.type?.toLowerCase().includes('arrive') ? 'arrive'
-                       : 'straight';
+const richtung = naechsterSchritt.type?.toLowerCase().includes('left')   ? 'left'
+               : naechsterSchritt.type?.toLowerCase().includes('right')  ? 'right'
+               : naechsterSchritt.type?.toLowerCase().includes('arrive') ? 'arrive'
+               : 'straight';
 
-        // Neuer Schritt → letzterSchrittIndex zurücksetzen damit Ansagen neu triggern
-        if (naechsterSchritt.index !== _letzterSchrittIndex) {
-            _letzterSchrittIndex = naechsterSchritt.index;
-            navController.update({
-                distance:  kleinsteEntfernung,
-                type:      richtung,
-                street:    naechsterSchritt.road || '',
-                connector: 'in_die',  // ← Unterstrich, passend zu AUDIO_FILES.connector
-            });
-        } else {
-            navController.update({
-                distance:  kleinsteEntfernung,
-                type:      richtung,
-                street:    naechsterSchritt.road || '',
-                connector: 'in_die',  // ← Unterstrich, passend zu AUDIO_FILES.connector
-            });
-        }
+const angezeigteEntfernung = Math.round(echteEntfernung);
+const distFuerStimme = ERLAUBTE_DISTANZEN.includes(angezeigteEntfernung)
+    ? angezeigteEntfernung
+    : -1;
+
+navController.update({
+    index:     naechsterSchritt.index,
+    distance:  distFuerStimme,
+    type:      richtung,
+    street:    naechsterSchritt.road || '',
+    connector: 'in_die',
+});
 
     }, function(err) {
         console.warn('GPS Fehler in NavAnzeige:', err);
@@ -215,7 +211,7 @@ function starteNavAnzeige(routeSchritte, routePunkte) {
 }
 
 // ===============================
-// NAVIGATIONSANZEIGE – Watcher stoppen (beim Tracking-Stop aufrufen)
+// NAVIGATIONSANZEIGE – Watcher stoppen
 // ===============================
 function stoppeNavAnzeige() {
     if (_navWatchId !== null) {
@@ -224,6 +220,5 @@ function stoppeNavAnzeige() {
     }
     _aktuelleSchritte = [];
     _aktuellePunkte   = [];
-    _letzterSchrittIndex = null;
     verbergeNavAnzeige();
 }

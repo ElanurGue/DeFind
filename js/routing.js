@@ -193,7 +193,7 @@ function startLiveTracking() {
                     
                     console.log(`↩️ ${Math.round(offRoute)}m von Route entfernt – berechne neu`);
                     navController.onReroute();
-                    //showMessage(_msgHtml('ℹ️ Route wird neu berechnet...', '', '#1a73e8'), 'info', 8000);
+                    
                     setTimeout(() => recalculateRoute(lat, lng), 1500);
                 }
             }
@@ -291,19 +291,19 @@ function calculateRouteToNearestDefi() {
 function recalculateRoute(lat, lng) {
     if (!currentDefiTarget) return;
 
-    // Reroute Message anzeigen
+    // kein Reroute Message anzeigen
     let msg = document.getElementById('reroute-message')
     if (!msg) {
         msg = document.createElement('div')
         msg.id = 'reroute-message'
         msg.setAttribute('data-cy', 'reroute-message')
-        msg.style.cssText = 'position:fixed;top:100px;left:50%;transform:translateX(-50%);background:#1a73e8;color:white;padding:10px 20px;border-radius:8px;z-index:9999;display:block'
+        msg.style.cssText = 'position:fixed;top:100px;left:50%;transform:translateX(-50%);background:transparent;color:white;padding:10px 20px;border-radius:8px;z-index:9999;display:block'
         document.body.appendChild(msg)
     }
     
-    msg.textContent = 'Route wird neu berechnet...'
     msg.style.display = 'block'
     setTimeout(() => { msg.style.display = 'none' }, 15000)
+
     verbergeNavAnzeige();
     if (routingControl) { map.removeControl(routingControl); routingControl = null; }
 
@@ -423,7 +423,7 @@ if (currentUserMarker) {
 if (routingControl && currentDefiTarget) {
     const offRoute = calculateDistanceToRoute(currentRouteCoords, lat, lng)
     if (offRoute > 15) {
-    navController.onReroute()
+    //navController.onReroute()
     recalculateRoute(lat, lng)
     }
 }

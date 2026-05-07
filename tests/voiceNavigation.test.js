@@ -63,7 +63,7 @@ const AUDIO_FILES = {
         right_side:'ziel rechts.mp3',
     },
     reroute: {
-        recalculating: 'route neu berechnet.mp3',
+        //recalculating: 'route neu berechnet.mp3',
         return:        'route zurueck.mp3',
     },
 };
@@ -104,8 +104,8 @@ class VoiceNavigation {
         this._enqueue([{ type: 'audio', src: BASE_PATH + file }]);
     }
     announceRerouting() {
-        if (!this.enabled) return;
-        this._enqueue([{ type: 'audio', src: BASE_PATH + AUDIO_FILES.reroute.recalculating }]);
+        //if (!this.enabled) return;
+        //this._enqueue([{ type: 'audio', src: BASE_PATH + AUDIO_FILES.reroute.recalculating }]);
     }
     _enqueue(segments) {
         this.queue.push(...segments);
@@ -152,13 +152,23 @@ class NavigationController {
         this._currentStep  = null;
     }
     update(step) {
+        const dist = step.distance;
+
+        console.log("dist:",dist);
+
+        console.log("BOX vs STEP DIST:", {
+            stepDistance: dist,
+            fullStep: step
+        });
+
+
         if (this._silent) return;
         if (step !== this._currentStep) {
             this._currentStep  = step;
             this._announced30m = false;
             this._announced5m  = false;
         }
-        const dist = step.distance;
+
         if (step.type === 'arrive') {
             if (!this._announced5m) { this._announced5m = true; this.voice.announceArrival('reached'); }
             return;
@@ -175,7 +185,7 @@ class NavigationController {
         }
     }
     onReroute() {
-        this.voice.announceRerouting();
+        //this.voice.announceRerouting();
         this._announced30m = false;
         this._announced5m  = false;
         this._currentStep  = null;
@@ -286,15 +296,15 @@ describe('T10 – Sprachliche Weganweisungen', () => {
 
     describe('Routenneuberechnung', () => {
 
-        test('spielt "route neu berechnet" Audio ab', () => {
-            voiceNav.announceRerouting();
-            expect(Audio).toHaveBeenCalledWith(BASE_PATH + 'route neu berechnet.mp3');
-        });
+        //test('spielt "route neu berechnet" Audio ab', () => {
+          //  voiceNav.announceRerouting();
+          //  expect(Audio).toHaveBeenCalledWith(BASE_PATH + 'route neu berechnet.mp3');
+        //});
 
-        test('onReroute() spielt Neuberechnungs-Audio ab', () => {
-            navController.onReroute();
-            expect(Audio).toHaveBeenCalledWith(BASE_PATH + 'route neu berechnet.mp3');
-        });
+        //test('onReroute() spielt Neuberechnungs-Audio ab', () => {
+            //navController.onReroute();
+            //expect(Audio).toHaveBeenCalledWith(BASE_PATH + 'route neu berechnet.mp3');
+        //});
 
         test('onReroute() setzt Status zurück', () => {
             navController._announced30m = true;
