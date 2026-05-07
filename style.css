@@ -221,7 +221,7 @@ nav a.active {
 ========================= */
 #map {
     width: 100%;
-    height: calc(100vh - 160px); /* 80px = Header-Höhe */
+    height: calc(100vh - 80px); /* 80px = Header-Höhe */
     z-index: 1;
 }
 
@@ -315,7 +315,7 @@ nav a.active {
 ========================= */
 #dark-mode-toggle {
     position: fixed;
-    bottom: 24px;
+    bottom: 80px;
     right: 24px;
     z-index: 9999;
     width: 52px;
